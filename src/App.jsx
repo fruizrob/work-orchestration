@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import plans from 'virtual:plans';
 import { layout } from './layout.js';
+import { OWNER_CARDS, doneCount, planClock, stepState, summarize } from './status.js';
+import Answers from './Answers.jsx';
 import Board from './Board.jsx';
 import Detail from './Detail.jsx';
 
@@ -22,21 +24,38 @@ function RunPlan({ plan, picker }) {
   const [done, toggleDone] = useDone(`run-plan:${plan.date}`);
   const [selected, setSelected] = useState(null);
   const [critOn, setCritOn] = useState(false);
-  const now = useNow(plan.timezone);
+  const [announcement, setAnnouncement] = useState('');
+  const opener = useRef(null);
+  const clock = planClock(plan, useNow(plan.timezone));
 
-  const next = model.ordered.filter((s) => s.owner === 'you' && !done.has(s.id))
-    .sort((a, b) => model.order(a) - model.order(b))[0] ?? null;
+  // Everything below derives from the plan, the done marks and the plan clock.
+  const planSteps = [...model.steps.values()];
+  const states = new Map(planSteps.map((s) => [s.id, stepState(s, clock.time, done)]));
+  const answers = OWNER_CARDS.map((card) => ({ ...card, ...summarize(planSteps, card.owner, clock.time, done) }));
 
-  const select = (id, reveal = false) => {
+  // from: the button that opened the detail; focus returns to it on close.
+  const open = (id, from) => {
+    if (from) opener.current = from;
     setSelected(id);
-    if (id) setCritOn(false);
-    if (id && reveal) requestAnimationFrame(() =>
-      document.getElementById(`step-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }));
+    setCritOn(false);
   };
-  const clear = () => { setSelected(null); setCritOn(false); };
+  // Center the selected step in the timeline. Horizontal only, so the page does not jump away from the detail.
+  useEffect(() => {
+    const node = selected && document.getElementById(`step-${selected}`);
+    const scroller = node?.closest('.scroller');
+    if (scroller) scroller.scrollLeft = node.offsetLeft - (scroller.clientWidth - node.offsetWidth) / 2;
+  }, [selected]);
+  const close = () => {
+    setSelected(null);
+    if (opener.current?.isConnected) opener.current.focus();
+  };
+  const markDone = (id) => {
+    toggleDone(id);
+    setAnnouncement(`${model.steps.get(id).title} · ${done.has(id) ? 'Completion undone' : 'Done'}`);
+  };
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') clear(); };
+    const onKey = (e) => { if (e.key === 'Escape') { setSelected(null); setCritOn(false); } };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
@@ -48,25 +67,24 @@ function RunPlan({ plan, picker }) {
         <div>
           <h1>Run Plan</h1>
           <p className="meta">
-            {formatDate(plan.date, { weekday: 'short', month: 'short', day: 'numeric' })} · as of {plan.asOf} · {done.size} of {model.steps.size} done
+            {formatDate(plan.date, { weekday: 'short', month: 'short', day: 'numeric' })} · {clock.live ? clock.time : `Snapshot ${clock.time}`} · {doneCount(planSteps, done)} of {planSteps.length} done
           </p>
         </div>
         <div className="actions">
           {picker}
-          {next && (
-            <button type="button" className="btn primary" onClick={() => select(next.id, true)}>
-              <span>Next: {next.title} · {next.on ?? next.start}</span>
-            </button>
-          )}
           <button type="button" className="btn" aria-pressed={critOn} onClick={() => { setSelected(null); setCritOn(!critOn); }}>
             <i className="swatch" />Critical path
           </button>
         </div>
       </header>
-      <Board model={model} plan={plan} done={done} selected={selected} critOn={critOn} now={now} startAt={next}
-        onSelect={(id) => select(selected === id ? null : id)} onClear={clear} />
-      <Detail model={model} step={selected ? model.steps.get(selected) : next} isNext={!selected}
-        done={done} onToggleDone={toggleDone} onSelect={(id) => select(id, true)} />
+      <Answers answers={answers} model={model} done={done} selected={selected} onOpen={open} />
+      {selected && (
+        <Detail model={model} step={model.steps.get(selected)} states={states}
+          onToggleDone={markDone} onOpen={(id) => open(id)} onClose={close} />
+      )}
+      <Board model={model} states={states} selected={selected} critOn={critOn} clock={clock}
+        onSelect={(id, from) => (selected === id ? close() : open(id, from))} onClear={() => setSelected(null)} />
+      <p className="sr-only" role="status">{announcement}</p>
     </div>
   );
 }

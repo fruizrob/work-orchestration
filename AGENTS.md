@@ -1,5 +1,19 @@
 # Work Orchestrator
 
+## Product standard — simplicity and craft
+
+Apply this standard to every change. Aim for the clarity and polish of Linear and Apple Notes.
+
+- **Purpose.** Give each screen one clear job and an obvious next action.
+- **Design.** Make behavior self-evident through layout, hierarchy, spacing, and familiar controls.
+- **Copy.** Remove redundant taglines, helper text, and labels. When a screen needs explanation, improve its structure and interaction first. Preserve essential content, accessible names, and actionable errors.
+- **Code.** Choose the smallest complete solution. Follow existing patterns, keep changes local, make boundaries clear, and keep data flow explicit. Add abstractions and dependencies only when they reduce overall complexity.
+- **Quality.** Improve UX, DX, and AX together.
+  - **UX.** Make the app easy to understand, fast to use, and accessible.
+  - **DX.** Make the app easy to maintain, test, and debug.
+  - **AX.** Make the app easy for agents to discover, reason about, and safely modify.
+- **Compatibility.** Preserve working behavior, contracts, and data.
+
 ## Goal
 
 A quick view to orchestrate one work day. A **Run Plan** puts each piece of work on a swimlane by owner:
@@ -21,4 +35,5 @@ README.md has the commands, the file map, the plan format, and the validator rul
 - `package-lock.json` must resolve from `https://registry.npmjs.org/` only. If you install through a private mirror, rewrite its URLs before you commit.
 - Each validator rule lives in `validate.mjs` and is listed in README.md. Change both together, and add a case to `validate.test.mjs`.
 - `npm run build` writes one self-contained HTML file with one plan inlined. The page loads nothing from the network.
-- Keep geometry in `src/layout.js` (pure, tested with `node --test`) and state in `src/App.jsx`.
+- Keep geometry in `src/layout.js` and status rules in `src/status.js`. Both are pure and tested with `node --test`. Keep state in `src/App.jsx`.
+- `examples/run-plan-concept.html` is the design reference for behavior, palette and acceptance cases. Change it and `src/status.js` together.

@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Plan concept</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    font-family: var(--font-sans, system-ui, sans-serif);
+    color: var(--foreground, light-dark(#172723, #ECF1EE));
+    --canvas: light-dark(#F3F5F1, #141B18);
+    --surface: light-dark(#FFFFFF, #1C2520);
+    --ink: light-dark(#172723, #ECF1EE);
+    --quiet: light-dark(#52645B, #ABBDB3);
+    --line: light-dark(#DBE3DC, #35443C);
+    --ready: light-dark(#13533E, #ADE2C4);
+    --ready-bg: light-dark(#E7F2EA, #20392C);
+    --agent: light-dark(#30478D, #BBCBFF);
+    --agent-bg: light-dark(#EEF1FC, #252F47);
+    --wait: light-dark(#745011, #F2D48F);
+    --wait-bg: light-dark(#FAF1DB, #382E1B);
+    --critical: light-dark(#A12839, #FFABBA);
+    --ring: light-dark(#2459BA, #A8C6FF);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-size: 15px; line-height: 1.5; }
+  main { max-width: 960px; margin-inline: auto; }
+  h1, h2, h3, p { margin: 0; }
+  button, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--ring); outline-offset: 3px;
+  }
+  code, time, .clock, .tick, .swatch-pair small { font-variant-numeric: tabular-nums; }
+  code, .swatch-pair small { font-family: var(--font-mono, ui-monospace, monospace); font-size: .86em; }
+  .intro { margin-block: 24px 16px; }
+  h1 { font-size: clamp(28px, 5vw, 42px); letter-spacing: -.055em; line-height: 1.1; }
+  .intro p, .handoff > p { color: var(--muted-foreground, var(--quiet)); margin-top: 8px; }
+  .demo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-block: 14px 12px; }
+  .demo-controls label { font-size: 13px; font-weight: 650; }
+  .control {
+    min-height: 40px; padding: 7px 11px; border: 1px solid var(--line);
+    border-radius: 7px; background: var(--surface); color: var(--ink);
+  }
+  .control:hover, .card-button:hover, .slot:hover { border-color: var(--quiet); }
+  .mock {
+    padding: 16px; border-radius: var(--radius, 14px);
+    color: var(--ink); background: var(--canvas); display: grid; gap: 14px;
+  }
+  .day-head { display: flex; justify-content: space-between; gap: 8px 16px; align-items: baseline; flex-wrap: wrap; }
+  .day-head h2 { font-size: clamp(20px, 4vw, 28px); letter-spacing: -.04em; }
+  .clock { color: var(--quiet); font-size: 13px; }
+  .queue { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .queue-card {
+    min-width: 0; padding: 12px; border-radius: 9px; background: var(--surface);
+    border: 1px solid var(--line); display: flex; flex-direction: column;
+  }
+  .queue-card h3 { color: var(--tone, var(--quiet)); font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+  .you { --tone: var(--ready); --tint: var(--ready-bg); }
+  .agent { --tone: var(--agent); --tint: var(--agent-bg); }
+  .other { --tone: var(--wait); --tint: var(--wait-bg); }
+  .queue-card.you { background: var(--ready-bg); }
+  .card-button {
+    width: 100%; padding: 3px 0; min-height: 44px; background: none; border: 0;
+    border-bottom: 1px solid transparent; border-radius: 3px; text-align: left;
+  }
+  .card-button strong, .quiet { display: block; }
+  .card-button strong { font-size: 16px; line-height: 1.25; letter-spacing: -.015em; }
+  .quiet { color: var(--quiet); font-size: 12px; margin-top: 5px; }
+  .detail { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+  .detail header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+  .detail header h3 { font-size: 18px; letter-spacing: -.025em; }
+  .detail p { margin-top: 5px; }
+  .detail a { color: var(--ring); }
+  .detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+  .solid { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .timeline { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; min-width: 0; padding: 10px; }
+  .timeline h3 { font-size: 14px; margin-bottom: 5px; }
+  .timeline-scroll { overflow-x: auto; }
+  .timeline-grid {
+    min-width: 575px; display: grid; grid-template-columns: 68px 1fr;
+    grid-template-rows: 25px repeat(3, 44px); column-gap: 6px;
+  }
+  .tick-row, .track { position: relative; min-width: 0; }
+  .tick-row { grid-column: 2; }
+  .tick { position: absolute; top: 3px; font-size: 11px; color: var(--quiet); }
+  .lane { align-self: center; font-size: 12px; font-weight: 650; }
+  .track {
+    border-top: 1px solid var(--line);
+    background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 20%);
+  }
+  .slot {
+    position: absolute; top: 4px; height: 35px; padding: 0 6px;
+    overflow: hidden; text-align: left;
+    border: 1px solid var(--line); border-left: 3px solid var(--tone); border-radius: 5px;
+    background: var(--tint); color: var(--tone); font-size: 11px; font-weight: 650;
+  }
+  .slot-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot-state { display: block; font-size: 10px; line-height: 1.05; }
+  .slot.blocked { color: var(--wait); border-left-color: var(--wait); background: var(--wait-bg); }
+  .slot.done { color: var(--quiet); background: var(--canvas); border-left-color: var(--quiet); }
+  .slot.done .slot-title { text-decoration: line-through; }
+  .now-marker { position: absolute; top: 0; height: 100%; border-left: 1px dashed var(--ring); pointer-events: none; }
+  .later-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border-top: 1px solid var(--line); padding-top: 7px; }
+  .later-row .control { font-size: 12px; }
+  .handoff { margin-block: 24px 32px; }
+  .handoff h2 { font-size: 23px; letter-spacing: -.035em; }
+  details { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; padding: 12px 2px; font-weight: 650; }
+  .notes { margin: 0 2px 14px; }
+  .notes p + p { margin-top: 8px; }
+  .notes ul, .notes ol { margin-block: 6px; padding-inline-start: 20px; }
+  .notes li + li { margin-top: 6px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; margin-top: 10px; }
+  .swatch-pair { padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .swatch-pair strong { font-size: 13px; }
+  .swatch-pair code { display: block; }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-block: 4px; }
+  .chips span { min-height: 25px; border: 1px solid var(--line); border-radius: 4px; }
+  .swatch-pair small { display: block; color: var(--muted-foreground, var(--quiet)); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  @media (max-width: 980px) {
+    main > * { margin-inline: 8px; }
+  }
+  @media (max-width: 580px) {
+    .queue { grid-template-columns: 1fr; }
+    .queue-card { padding: 9px 12px; }
+    .queue-card h3 { margin-bottom: 0; }
+    .intro { margin-top: 12px; }
+    .mock { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="intro">
+    <h1>Run Plan concept</h1>
+    <p>When the schedule slips, can you tell what can move and who can move it?</p>
+  </header>
+
+  <div class="demo-controls">
+    <label for="scenario">Try a workday scenario</label>
+    <select class="control" id="scenario">
+      <option value="late">Late approval</option>
+      <option value="arrives">Approval arrives</option>
+      <option value="early">Before the first task</option>
+      <option value="waiting">Only a blocker left</option>
+      <option value="wrapped">Today is wrapped</option>
+    </select>
+  </div>
+
+  <section class="mock" aria-labelledby="plan-date">
+    <header class="day-head">
+      <h2 id="plan-date">Friday, November 27</h2>
+      <p class="clock" id="clock"></p>
+    </header>
+    <div class="queue" id="queue"></div>
+    <section class="detail" id="detail" aria-labelledby="detail-title" hidden></section>
+    <section class="timeline" aria-labelledby="timeline-title">
+      <h3 id="timeline-title">Timeline</h3>
+      <div class="timeline-scroll" role="region" aria-label="Timeline from 10:00 to 12:30" tabindex="0">
+        <div class="timeline-grid" id="timeline"></div>
+      </div>
+      <div class="later-row" id="later"></div>
+    </section>
+    <p class="sr-only" role="status" id="announcement"></p>
+  </section>
+
+  <section class="handoff" aria-labelledby="handoff-title">
+    <h2 id="handoff-title">Implementation handoff</h2>
+    <p>Use the prototype to agree on behavior. Use the existing React app and plan data to implement it.</p>
+
+    <details open>
+      <summary>First iteration</summary>
+      <div class="notes">
+        <ol>
+          <li><strong>Answer three questions above the timeline.</strong> Show one ready personal action, one ready agent task, and one outstanding external wait. Keep the timeline for the full schedule and dependencies.</li>
+          <li><strong>Open the same detail panel from every task button.</strong> Show title, owner, planned time, status, and prerequisites. Preserve task notes, rationale, and links. Each prerequisite shows its status and opens its own detail. Keep the completion and undo actions.</li>
+          <li><strong>Use the same reading order at every width.</strong> Personal action, agent work, external wait, selected detail, timeline. Stack the summaries on phones. Allow the timeline to scroll within its own region.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary>Definitions and decision rules</summary>
+      <div class="notes">
+        <ul>
+          <li><strong>Plan clock.</strong> For the current plan date, use the live clock in <code>plan.timezone</code>. For another date, use <code>plan.asOf</code> and label the view “Snapshot”. Compare times within the plan date.</li>
+          <li><strong>Done.</strong> The existing completion mark for a step ID is authoritative. Recalculate the summaries after each mark or undo. Count only IDs present in the loaded plan.</li>
+          <li><strong>Blocked.</strong> At least one step in <code>after</code> lacks a completion mark. Show the open prerequisites by title and lane. A planned end time passing never clears a prerequisite.</li>
+          <li><strong>Scheduled.</strong> A step timed later in the plan day is upcoming. A step with <code>on</code> belongs under Later. If an upcoming step has an open prerequisite, show that status in its detail.</li>
+          <li><strong>Ready.</strong> A timed <code>you</code> or <code>agent</code> step has reached its planned start, has no open prerequisites, and is unfinished. Choose the earliest planned start per owner. Break ties with the order in <code>plan.steps</code>. A ready agent task is eligible for a handoff.</li>
+          <li><strong>Waiting on.</strong> An unfinished <code>other</code> step has reached its planned start and has no open prerequisites. Use the lane name to identify the person or team. Choose the earliest open wait and name the first unfinished task it directly unblocks, if one exists.</li>
+          <li><strong>Empty summaries.</strong> If no task qualifies, distinguish “Starts later today”, “Blocked”, and “Nothing left today”. Keep each owner’s state independent. Show Later tasks in their own section.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Palette and typography</summary>
+      <div class="notes">
+        <p>Use system sans for titles and labels. Use tabular figures for times. Reserve the tinted green surface for the personal action. Use written states with color, and keep keyboard focus visibly distinct from task status.</p>
+        <div class="swatches" id="palette" aria-label="Light and dark color tokens"></div>
+        <p style="margin-top: 8px">Pair the personal, agent, and waiting text colors with their matching surfaces. Use the critical color for marked dependency paths. Keep normal text at 4.5:1 contrast or higher and focus indicators at 3:1 or higher against adjacent colors.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Acceptance cases and code boundaries</summary>
+      <div class="notes">
+        <ol>
+          <li><strong>Late approval at 11:05.</strong> An overdue merge still needs release approval. The personal card shows “Reply to the feedback”, the agent card shows “Draft a regression test”, and the waiting card identifies the release reviewer.</li>
+          <li><strong>Approval arrives.</strong> Mark the approval done. “Merge the release PR” becomes the personal action. Undo it. The reply returns and the wait reappears.</li>
+          <li><strong>Blocked or empty.</strong> If the reply and agent task are done, show the human merge as blocked and retain the waiting card. When every timed task is done, preserve access to the Monday task.</li>
+          <li><strong>Clock boundaries.</strong> At 09:45 each later timed task stays scheduled. At its exact start a task can become ready. When viewing a previous date, label the displayed clock as a snapshot.</li>
+          <li><strong>Plan changes and access.</strong> When a saved completion ID disappears from the plan, the visible count stays correct. At 390 px the summaries and detail fit without page scrolling sideways. A keyboard user can select a task, follow a prerequisite, mark or undo completion, and return to the selected task. The accessible task name includes the current status.</li>
+        </ol>
+        <p><strong>Entry points.</strong> Derive the three answers from the active plan and completion marks in <code>src/App.jsx</code>. Reuse <code>src/Detail.jsx</code> for action and dependency details. Keep timeline geometry in <code>src/layout.js</code>. Keep the plan schema and one-file offline build compatible.</p>
+        <p><strong>Separate fixes.</strong> Handle same-slot tasks, minute-long tasks, personal schedule conflicts, same-date completion storage, and invalid-plan recovery as their own changes. Preserve existing plan JSON, plan selection, and critical-path focus.</p>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script>
+  const tasks = [
+    { id: 'approval', owner: 'other', lane: 'Release reviewer', title: 'Release approval', start: '10:00', end: '10:30' },
+    { id: 'merge', owner: 'you', lane: 'Reviews', title: 'Merge the release PR', start: '10:30', end: '11:00',
+      after: ['approval'], link: { label: 'Release PR', url: 'https://example.com/release-pr' } },
+    { id: 'reply', owner: 'you', lane: 'Replies', title: 'Reply to the feedback', start: '11:00', end: '11:30' },
+    { id: 'test', owner: 'agent', lane: 'Test agent', title: 'Draft a regression test', start: '11:00', end: '12:00' },
+    { id: 'followup', owner: 'you', lane: 'Reviews', title: 'Review release results', on: 'Mon' },
+  ];
+  const scenarios = {
+    late: { now: '11:05', done: [] },
+    arrives: { now: '11:05', done: ['approval'] },
+    early: { now: '09:45', done: [] },
+    waiting: { now: '11:20', done: ['reply', 'test'] },
+    wrapped: { now: '16:45', done: ['approval', 'merge', 'reply', 'test'] },
+  };
+  const groups = [
+    { id: 'you', name: 'You', title: 'Your next action', ready: 'Ready' },
+    { id: 'agent', name: 'Agents', title: 'Agent work', ready: 'Ready for handoff' },
+    { id: 'other', name: 'Others', title: 'Waiting on', ready: 'Waiting' },
+  ];
+
+  function taskState(task, now, done) {
+    if (done.has(task.id)) return 'done';
+    if (task.start && task.start <= now) {
+      return task.after?.some(id => !done.has(id)) ? 'blocked' : 'ready';
+    }
+    return 'scheduled';
+  }
+
+  function summarize(tasks, owner, now, done) {
+    const openToday = tasks.filter(task => task.owner === owner && task.start && !done.has(task.id))
+      .sort((left, right) => left.start.localeCompare(right.start));
+    for (const state of ['ready', 'blocked', 'scheduled']) {
+      const task = openToday.find(step => taskState(step, now, done) === state);
+      if (task) return { state, task };
+    }
+    return { state: 'empty' };
+  }
+</script>
+<script>
+  const byId = Object.fromEntries(tasks.map(task => [task.id, task]));
+  const groupById = Object.fromEntries(groups.map(group => [group.id, group]));
+  const scenario = document.getElementById('scenario');
+  const detail = document.getElementById('detail');
+  const announcement = document.getElementById('announcement');
+  let now, done, selected, opener;
+
+  const prerequisites = task => (task.after ?? []).map(id => byId[id]);
+  const unblocks = task => tasks.filter(candidate => candidate.after?.includes(task.id) && !done.has(candidate.id));
+  const minutes = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+  const timelineX = time => (minutes(time) - 600) / 1.5;
+  const stateLabel = (task, state) => ({
+    ready: groupById[task.owner].ready, blocked: 'Blocked', scheduled: 'Scheduled', done: 'Done',
+  })[state];
+  const detailControl = task => `aria-controls="detail" aria-expanded="${selected === task.id}"`;
+
+  function card(group) {
+    const { state, task } = summarize(tasks, group.id, now, done);
+    const title = state === 'ready' && group.id === 'other' ? task.lane : task?.title;
+    let hint = 'Nothing left today';
+    if (state === 'ready') {
+      const first = unblocks(task)[0];
+      hint = group.id === 'other' ? (first ? `Unblocks “${first.title}”` : task.title) : `${task.start} · ${group.ready}`;
+    }
+    if (state === 'blocked') hint = `Blocked · ${prerequisites(task).filter(step => !done.has(step.id)).map(step => step.title).join(', ')}`;
+    if (state === 'scheduled') hint = `Starts later today · ${task.start}`;
+
+    return `<section class="queue-card ${group.id}">
+      <h3>${group.title}</h3>
+      ${task ? `<button type="button" class="card-button" data-task="${task.id}" data-from="${group.id}" ${detailControl(task)}>
+        <strong>${title}</strong><span class="quiet">${hint}</span></button>` : `<p class="quiet">${hint}</p>`}
+    </section>`;
+  }
+
+  function render() {
+    document.getElementById('clock').textContent = `${now} · Example day`;
+    document.getElementById('queue').innerHTML = groups.map(card).join('');
+    const ticks = ['10:00', '10:30', '11:00', '11:30', '12:00'];
+    const nowMark = timelineX(now);
+    document.getElementById('timeline').innerHTML =
+      `<div class="tick-row">${ticks.map(time => `<span class="tick" style="left:${timelineX(time)}%">${time}</span>`).join('')}</div>` +
+      groups.map(group => `<span class="lane">${group.name}</span><div class="track">
+        ${tasks.filter(task => task.owner === group.id && task.start).map(task => {
+          const state = taskState(task, now, done);
+          return `<button type="button" class="slot ${task.owner} ${state}" data-task="${task.id}" data-from="timeline" ${detailControl(task)}
+            title="${task.title}" aria-label="${task.title}, ${stateLabel(task, state)}, ${task.start} to ${task.end}"
+            style="left:${timelineX(task.start)}%;width:calc(${timelineX(task.end) - timelineX(task.start)}% - 4px)">
+            <span class="slot-title">${task.title}</span>
+            ${state === 'blocked' || state === 'done' ? `<span class="slot-state">${stateLabel(task, state)}</span>` : ''}</button>`;
+        }).join('')}
+        ${nowMark >= 0 && nowMark <= 100 ? `<span aria-hidden="true" class="now-marker" style="left:${nowMark}%"></span>` : ''}
+      </div>`).join('');
+    document.getElementById('later').innerHTML = `<span class="lane">Later</span>` +
+      tasks.filter(task => task.on).map(task => `<button class="control" type="button" data-task="${task.id}" data-from="later" ${detailControl(task)}
+        aria-label="${task.on}, ${task.title}, ${stateLabel(task, taskState(task, now, done))}">${task.on} · ${task.title}${done.has(task.id) ? ' · Done' : ''}</button>`).join('');
+
+    detail.hidden = !selected;
+    if (!selected) return;
+    const task = byId[selected];
+    const state = taskState(task, now, done);
+    detail.innerHTML = `<header><div>
+      <h3 id="detail-title" tabindex="-1">${task.title}</h3>
+      <p class="quiet">${task.lane} · ${task.on ?? `${task.start}–${task.end}`} · ${stateLabel(task, state)}</p>
+      </div><button type="button" class="control" data-close>Close</button></header>
+      ${prerequisites(task).map(step => `<p>Needs <button type="button" class="control" data-task="${step.id}">
+        ${step.title} · ${stateLabel(step, taskState(step, now, done))}</button></p>`).join('')}
+      ${unblocks(task).map(step => `<p>Unblocks <button type="button" class="control" data-task="${step.id}">${step.title}</button></p>`).join('')}
+      ${task.link ? `<p><a href="${task.link.url}" target="_blank" rel="noopener noreferrer">${task.link.label}</a></p>` : ''}
+      <div class="detail-actions"><button type="button" class="control solid" data-toggle>${state === 'done' ? 'Undo completion' : 'Mark done'}</button></div>`;
+  }
+
+  function reset() {
+    const current = scenarios[scenario.value];
+    now = current.now;
+    done = new Set(current.done);
+    selected = null;
+    opener = null;
+    render();
+  }
+
+  function closeDetail() {
+    selected = null;
+    render();
+    const previous = opener && (document.querySelector(`[data-task="${opener.id}"][data-from="${opener.from}"]`) ||
+      document.querySelector(`[data-task="${opener.id}"][data-from]`));
+    (previous || scenario).focus();
+  }
+
+  scenario.addEventListener('change', reset);
+  document.querySelector('.mock').addEventListener('click', event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.task) {
+      selected = button.dataset.task;
+      if (button.dataset.from) opener = { id: selected, from: button.dataset.from };
+      render();
+      document.getElementById('detail-title').focus();
+    } else if (button.hasAttribute('data-toggle')) {
+      if (done.has(selected)) done.delete(selected);
+      else done.add(selected);
+      announcement.textContent = `${byId[selected].title} · ${done.has(selected) ? 'Done' : 'Completion undone'}`;
+      render();
+      detail.querySelector('[data-toggle]').focus();
+    } else if (button.hasAttribute('data-close')) {
+      closeDetail();
+    }
+  });
+  detail.addEventListener('keydown', event => { if (event.key === 'Escape') closeDetail(); });
+
+  const palette = [
+    ['Canvas', '--canvas', '#F3F5F1', '#141B18'], ['Surface', '--surface', '#FFFFFF', '#1C2520'],
+    ['Text', '--ink', '#172723', '#ECF1EE'], ['Secondary text', '--quiet', '#52645B', '#ABBDB3'],
+    ['Border', '--line', '#DBE3DC', '#35443C'], ['Personal action', '--ready', '#13533E', '#ADE2C4'],
+    ['Personal surface', '--ready-bg', '#E7F2EA', '#20392C'], ['Agent ink', '--agent', '#30478D', '#BBCBFF'],
+    ['Agent surface', '--agent-bg', '#EEF1FC', '#252F47'], ['Waiting ink', '--wait', '#745011', '#F2D48F'],
+    ['Waiting surface', '--wait-bg', '#FAF1DB', '#382E1B'], ['Critical dependency', '--critical', '#A12839', '#FFABBA'],
+    ['Focus and now line', '--ring', '#2459BA', '#A8C6FF'],
+  ];
+  document.getElementById('palette').innerHTML = palette.map(([label, token, light, dark]) => `
+    <div class="swatch-pair"><strong>${label}</strong> <code>${token}</code>
+      <div class="chips" aria-hidden="true"><span style="background:${light}"></span><span style="background:${dark}"></span></div>
+      <small>Light ${light} · Dark ${dark}</small></div>`).join('');
+
+  reset();
+</script>
+</body>
+</html>

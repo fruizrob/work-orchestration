@@ -1,20 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { OWNER_WORD, dur, minutes, when, whenShort } from './layout.js';
+import { stateLabel } from './status.js';
 
-export default function Board({ model, plan, done, selected, critOn, now, startAt, onSelect, onClear }) {
+export default function Board({ model, states, selected, critOn, clock, onSelect, onClear }) {
   const scroller = useRef(null);
   const { width, height, labelWidth, axis, xAt, dayStart, dayEnd } = model;
 
-  // Open the board scrolled to your next step.
+  const showNow = minutes(clock.time) >= dayStart && minutes(clock.time) <= dayEnd;
+
+  // Open the board scrolled to the plan clock.
   useEffect(() => {
-    if (startAt && !startAt.on) scroller.current.scrollLeft = Math.max(0, startAt.x - labelWidth - 120);
+    if (showNow) scroller.current.scrollLeft = Math.max(0, xAt(clock.time) - labelWidth - 160);
   }, []);
 
   const focus = selected ? related(model, selected)
     : critOn ? new Set(model.ordered.filter((s) => s.critical).map((s) => s.id)) : null;
   const dimStep = (id) => Boolean(focus) && !focus.has(id);
   const dimEdge = (e) => Boolean(focus) && !(focus.has(e.from) && focus.has(e.to) && (!critOn || e.crit));
-  const showNow = now && now.date === plan.date && minutes(now.time) >= dayStart && minutes(now.time) <= dayEnd;
 
   return (
     <div className="scroller" ref={scroller} role="region" aria-label="Timeline" tabIndex={0}>
@@ -48,7 +50,7 @@ export default function Board({ model, plan, done, selected, critOn, now, startA
         {model.breaks.map((b) => (
           <div key={b.key} className="break" style={{ left: b.x, width: b.w, top: b.y, height: b.h }}>{b.label}</div>
         ))}
-        {showNow && <div className="nowline" style={{ left: xAt(now.time) }}><span>{now.time}</span></div>}
+        {showNow && <div className="nowline" style={{ left: xAt(clock.time) }}><span>{clock.time}</span></div>}
 
         <svg className="edges" width={width} height={height} aria-hidden="true">
           <defs>
@@ -64,17 +66,21 @@ export default function Board({ model, plan, done, selected, critOn, now, startA
           ))}
         </svg>
 
-        {model.ordered.map((s) => (
-          <button key={s.id} id={`step-${s.id}`} type="button" title={s.title}
-            className={`node ${s.owner}${done.has(s.id) ? ' done' : ''}${s.id === selected ? ' sel' : ''}${dimStep(s.id) ? ' dim' : ''}`}
-            aria-label={`${s.title}. ${OWNER_WORD[s.owner]} · ${model.lanes.get(s.lane).name}. ${when(s)}`}
-            aria-pressed={s.id === selected}
-            style={{ left: s.x, top: s.y, width: s.w, height: s.h }}
-            onClick={() => onSelect(s.id)}>
-            <span className="t">{s.title}</span>
-            <span className="w">{s.critical && <b>◆ </b>}{whenShort(s)}</span>
-          </button>
-        ))}
+        {model.ordered.map((s) => {
+          const state = states.get(s.id), label = stateLabel(s, state);
+          const flagged = state === 'blocked' || state === 'done';
+          return (
+            <button key={s.id} id={`step-${s.id}`} type="button" title={s.title}
+              className={`node ${s.owner} ${state}${s.id === selected ? ' sel' : ''}${dimStep(s.id) ? ' dim' : ''}`}
+              aria-label={`${s.title}. ${label}. ${OWNER_WORD[s.owner]} · ${model.lanes.get(s.lane).name}. ${when(s)}`}
+              aria-expanded={s.id === selected}
+              style={{ left: s.x, top: s.y, width: s.w, height: s.h }}
+              onClick={(e) => onSelect(s.id, e.currentTarget)}>
+              <span className="t">{s.title}</span>
+              <span className="w">{s.critical && <b>◆ </b>}{flagged ? `${label} · ${s.on ?? s.start}` : whenShort(s)}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
