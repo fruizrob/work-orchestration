@@ -7,21 +7,42 @@ import Board from './Board.jsx';
 import Detail from './Detail.jsx';
 
 export default function App() {
-  const [name, setName] = useState(plans[0].name);
-  const { plan } = plans.find((p) => p.name === name) ?? plans[0];
+  const [name, setName] = useState((plans.find((p) => p.plan) ?? plans[0]).name);
+  const entry = plans.find((p) => p.name === name) ?? plans[0];
+  // Switching plans remounts the page, picker included; put keyboard focus back on the picker.
+  const refocus = useRef(false);
   const picker = plans.length > 1 && (
-    <select className="btn" aria-label="Plan" value={name} onChange={(e) => setName(e.target.value)}>
-      {plans.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+    <select className="btn" aria-label="Plan" value={entry.name}
+      ref={(el) => { if (el && refocus.current) { refocus.current = false; el.focus(); } }}
+      onChange={(e) => { refocus.current = true; setName(e.target.value); }}>
+      {plans.map((p) => <option key={p.name} value={p.name}>{p.plan ? p.name : `${p.name} · invalid`}</option>)}
     </select>
   );
+  // An invalid plan (dev only) lists its errors; it never reaches layout().
+  if (!entry.plan) return <InvalidPlan entry={entry} picker={picker} />;
   // key: a new plan starts with a fresh selection and its own done marks.
-  return <RunPlan key={name} plan={plan} picker={picker} />;
+  return <RunPlan key={entry.name} name={entry.name} plan={entry.plan} picker={picker} />;
 }
 
-function RunPlan({ plan, picker }) {
+function InvalidPlan({ entry, picker }) {
+  return (
+    <div className="page">
+      <header className="bar">
+        <h1>Run Plan</h1>
+        <div className="actions">{picker}</div>
+      </header>
+      <section className="detail" role="alert">
+        <h2>{entry.name}.json</h2>
+        <ul>{entry.errors.map((e) => <li key={e}>{e}</li>)}</ul>
+      </section>
+    </div>
+  );
+}
+
+function RunPlan({ name, plan, picker }) {
   const labelWidth = useLabelWidth();
   const model = useMemo(() => layout(plan, labelWidth), [plan, labelWidth]);
-  const [done, toggleDone] = useDone(`run-plan:${plan.date}`);
+  const [done, toggleDone] = useDone(`run-plan:${name}`, `run-plan:${plan.date}`);
   const [selected, setSelected] = useState(null);
   const [critOn, setCritOn] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -103,9 +124,14 @@ function useLabelWidth() {
 }
 
 // Done marks live only in this browser. Storage can be blocked, so every access is guarded.
-function useDone(key) {
+// legacyKey: marks were once keyed by plan date; read them once when the new key is empty.
+function useDone(key, legacyKey) {
   const [done, setDone] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
+    try {
+      const saved = localStorage.getItem(key) ?? localStorage.getItem(legacyKey);
+      if (saved !== null) localStorage.setItem(key, saved); // migrate once, so a later date edit keeps the marks
+      return new Set(JSON.parse(saved ?? '[]'));
+    } catch { return new Set(); }
   });
   const toggle = (id) => setDone((prev) => {
     const next = new Set(prev);

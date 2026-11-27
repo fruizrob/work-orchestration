@@ -42,8 +42,8 @@ a:hover{text-decoration-color:currentColor}
 .board{position:relative}
 .row{position:absolute;left:0;right:0;border-bottom:1px solid var(--line)}
 .row.section{background:var(--band)}
-.label{position:sticky;left:0;z-index:6;width:var(--label);height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;
-  background:var(--surface);border-right:1px solid var(--line);font-size:12.5px;font-weight:500}
+.label{position:sticky;left:0;z-index:6;width:var(--label);height:calc(100% + 1px);display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12.5px;font-weight:500}
 .row.section .label{background:var(--band);font-size:12px;font-weight:600}
 .row.section .label small{font-weight:400;color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
@@ -71,8 +71,10 @@ svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visib
 .node .w b{color:var(--crit);font-weight:400}
 .node.blocked{--c:var(--other);--tint:var(--other-bg)}
 .node.blocked .w{color:var(--other)}
+.node.overlap .w{color:var(--other)}
 .node.done{opacity:.45} .node.done .t{text-decoration:line-through}
 .node.sel{box-shadow:0 0 0 2px var(--c)}
+.node.tiny{padding:0;border:0;border-radius:1px;background:var(--c)}
 .board.focus .dim{opacity:.12}
 
 .detail{max-width:760px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
@@ -86,6 +88,7 @@ svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visib
 .detail .meta{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;color:var(--muted)}
 .pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;color:var(--c);background:var(--tint)}
 .crittag{color:var(--crit)}
+.detail .clash{color:var(--other);font-size:12.5px}
 .deps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .deps ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:2px}
 .deps button{background:none;border:0;padding:2px 0;cursor:pointer;text-align:left;font-size:13px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:.2em}

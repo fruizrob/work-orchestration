@@ -11,7 +11,9 @@ export default defineConfig({
 
 // `virtual:plans` exports [{ name, plan }], validated with validate.mjs.
 // - dev:   every plans/*.json, newest first, then examples/plan.json. Edits reload the page.
+//          An invalid plan is exported as { name, errors } so it cannot block the others.
 // - build: only the file in PLAN (default examples/plan.json), so a shared page holds one plan.
+//          An invalid plan fails the build.
 function plans() {
   const ID = 'virtual:plans', RESOLVED = `\0${ID}`;
   let command = 'serve';
@@ -31,11 +33,11 @@ function plans() {
       const list = files().map((file) => {
         const name = relative(process.cwd(), file).replace(/\.json$/, '');
         this.addWatchFile(file);
-        let plan;
-        try { plan = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { this.error(`${name}.json: ${e.message}`); }
-        const errors = validate(plan);
-        if (errors.length) this.error(`${name}.json: ${errors.length} problem(s)\n${errors.map((e) => `  - ${e}`).join('\n')}`);
-        return { name, plan };
+        let plan, errors;
+        try { plan = JSON.parse(readFileSync(file, 'utf8')); errors = validate(plan); } catch (e) { errors = [e.message]; }
+        if (!errors.length) return { name, plan };
+        if (command === 'build') this.error(`${name}.json: ${errors.length} problem(s)\n${errors.map((e) => `  - ${e}`).join('\n')}`);
+        return { name, errors };
       });
       return `export default ${JSON.stringify(list)};`;
     },

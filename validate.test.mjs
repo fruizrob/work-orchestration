@@ -39,3 +39,42 @@ test('cycles between later steps are caught', () => {
   step(plan, 'approve-prod-rollout').after.push('start-rollout'); // both "Mon"
   assert.match(validate(plan).join('\n'), /dependency cycle/);
 });
+
+test('a plan that is not an object gives one error', () => {
+  for (const bad of [null, [], 'plan']) assert.deepEqual(validate(bad), ['plan: must be a JSON object']);
+});
+
+test('steps and lanes must be arrays', () => {
+  const plan = load();
+  delete plan.steps;
+  plan.lanes = {};
+  const errors = validate(plan).join('\n');
+  assert.match(errors, /steps: must be an array/);
+  assert.match(errors, /lanes: must be an array/);
+});
+
+test('after must be an array of step ids', () => {
+  for (const bad of ['fix-ci', { id: 'fix-ci' }, [1]]) {
+    const plan = load();
+    step(plan, 'infra-apply').after = bad;
+    assert.match(validate(plan).join('\n'), /step "infra-apply": after must be an array of step ids/);
+  }
+});
+
+test('later must be an array of unique slots', () => {
+  const plan = load();
+  plan.later = 'Mon';
+  assert.match(validate(plan).join('\n'), /later: must be an array/);
+  plan.later = ['Mon', 'Mon'];
+  assert.match(validate(plan).join('\n'), /later: duplicate slot "Mon"/);
+  plan.later = ['Mon', ''];
+  assert.match(validate(plan).join('\n'), /later: slot 2 must be a non-empty label/);
+  plan.later = [{}];
+  assert.match(validate(plan).join('\n'), /later: slot 1 must be a non-empty label/);
+});
+
+test('a break must start before it ends', () => {
+  const plan = load();
+  plan.breaks = [{ owner: 'you', start: '12:30', end: '12:30', label: 'Lunch' }];
+  assert.match(validate(plan).join('\n'), /break "Lunch": start must be before end/);
+});

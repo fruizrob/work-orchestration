@@ -21,7 +21,7 @@ Needs Node `^20.19` or `>=22.12`.
 | `plans/<date>.json` | Your plan: the only file to edit for a new day. Gitignored. |
 | `examples/plan.json` | A generic sample plan. The tests use it. |
 | `validate.mjs` | Rejects a plan that is malformed or cannot be scheduled. |
-| `vite.config.js` | Serves plans as `virtual:plans`, after validation. A bad plan shows as an error overlay in dev and fails the build. |
+| `vite.config.js` | Serves plans as `virtual:plans`, after validation. In dev a bad plan lists its errors on the page and the other plans still load; in a build it fails. |
 | `src/layout.js` | Pure geometry: plan in, box positions and arrows out. |
 | `src/status.js` | Pure status rules: done, ready, blocked, scheduled, and the three answers. |
 | `src/App.jsx` | Page state: plan clock, done marks, selected step, critical-path focus. |
@@ -50,6 +50,9 @@ Needs Node `^20.19` or `>=22.12`.
 
 The validator enforces these rules:
 
+- The plan is an object. `lanes` and `steps` are arrays.
+- `after` and `later` are optional. When present, `after` is an array of step ids and `later` is an array of unique, non-empty slot labels.
+- Each break has a `start` before its `end`, both inside the day.
 - Ids are unique. Each step names a real lane. Each `after` names a real step.
 - A step has either `start` + `end` inside the day, or `on` set to one of the `later` slots.
 - Steps in one lane do not overlap.
@@ -66,3 +69,4 @@ The cards above the timeline answer: your next action, agent work, and who you a
 - **Done.** A completion mark for the step id. Marks for ids no longer in the plan do not count. A passed end time never marks a step done.
 - **Blocked.** The step has started and at least one `after` step is not done.
 - **Ready.** A timed step has started, is not done, and has no open `after` steps. Each card shows its owner's earliest ready step, then the earliest blocked one, then the next scheduled one. Equal start times keep plan order.
+- **Overlap.** A warning, not a plan error. A timed `you` step overlaps another timed `you` step, or a `you` break, when their time ranges intersect. Touching ranges (end equals start) do not. The board and the step panel name what it overlaps.

@@ -15,13 +15,18 @@ export function layout(plan, labelWidth) {
   const slots = plan.later ?? [];
   const xAt = (t) => labelWidth + PAD + (minutes(t) - dayStart) * PX;
   const laterX = xAt(plan.day.end) + GAP;
-  const width = slots.length ? laterX + slots.length * SLOT + 12 : xAt(plan.day.end) + 24;
   const order = (s) => (s.on ? 10000 + slots.indexOf(s.on) : minutes(s.start));
 
   const lanes = new Map(plan.lanes.map((l) => [l.id, l]));
   const steps = new Map(plan.steps.map((s) => [s.id, { ...s, owner: lanes.get(s.lane).owner, after: s.after ?? [] }]));
   const unblocks = new Map();
   for (const s of steps.values()) for (const d of s.after) unblocks.set(d, [...(unblocks.get(d) ?? []), s.id]);
+
+  // Later steps in one lane and slot sit side by side, so a slot column is as wide as its biggest stack in any lane.
+  const stacked = (lane, label) => plan.steps.filter((s) => s.lane === lane.id && s.on === label).length;
+  const slotW = slots.map((label) => SLOT * Math.max(1, ...plan.lanes.map((lane) => stacked(lane, label))));
+  const slotX = slotW.map((_, i) => laterX + slotW.slice(0, i).reduce((a, b) => a + b, 0));
+  const width = slots.length ? laterX + slotW.reduce((a, b) => a + b, 0) + 12 : xAt(plan.day.end) + 24;
 
   // Rows top to bottom: one section header per owner, then its lanes.
   const rows = [];
@@ -38,23 +43,31 @@ export function layout(plan, labelWidth) {
   }
   const height = y;
 
-  // Step boxes. A short step gets a minimum width, but never covers the next step in its lane.
+  // Step boxes. A short step gets a minimum width, but never covers the next box in its lane. When the next box starts
+  // closer than the usual 4px gap (steps of a few minutes at PX px/min), the gap shrinks to half the room instead:
+  // the box stays visible and clear of its neighbor, which matters more than the margin.
   for (const lane of plan.lanes) {
     const inLane = [...steps.values()].filter((s) => s.lane === lane.id).sort((a, b) => order(a) - order(b));
     const timed = inLane.filter((s) => !s.on);
     timed.forEach((s, i) => {
       s.x = xAt(s.start);
       s.w = Math.max((minutes(s.end) - minutes(s.start)) * PX - 4, MIN_W);
-      if (timed[i + 1]) s.w = Math.min(s.w, xAt(timed[i + 1].start) - s.x - 4);
+      const room = (timed[i + 1] ? xAt(timed[i + 1].start) : laterX) - s.x;
+      s.w = Math.min(s.w, Math.max(room - 4, room / 2));
     });
-    inLane.filter((s) => s.on).forEach((s) => { s.x = laterX + slots.indexOf(s.on) * SLOT + 4; s.w = SLOT - 8; });
+    const seen = new Map();
+    inLane.filter((s) => s.on).forEach((s) => {
+      const i = slots.indexOf(s.on), j = seen.get(i) ?? 0;
+      seen.set(i, j + 1);
+      s.x = slotX[i] + j * SLOT + 4; s.w = SLOT - 8;
+    });
     inLane.forEach((s) => { s.h = NODE_H; s.y = laneY.get(lane.id) + (LANE - NODE_H) / 2; });
   }
   const ordered = plan.lanes.flatMap((lane) => [...steps.values()].filter((s) => s.lane === lane.id).sort((a, b) => order(a) - order(b)));
 
   const ticks = [];
   for (let t = dayStart; t <= dayEnd; t += 30) ticks.push({ x: xAt(hhmm(t)), label: t % 60 ? null : hhmm(t).replace(/^0/, '') });
-  const slotMarks = slots.map((label, i) => ({ x: laterX + i * SLOT, label }));
+  const slotMarks = slots.map((label, i) => ({ x: slotX[i], label }));
 
   const breaks = (plan.breaks ?? []).flatMap((b) => {
     const groupRows = rows.filter((r) => r.kind === 'lane' && r.owner === b.owner);
@@ -74,7 +87,8 @@ export function layout(plan, labelWidth) {
       d = `M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}`;
     } else {
       const down = t.y > s.y;
-      const sx = clamp(t.x + 18, s.x + 12, s.x + s.w - 12), tx = clamp(sx, t.x + 12, t.x + t.w - 12);
+      const inS = Math.min(12, s.w / 2), inT = Math.min(12, t.w / 2); // stay inside narrow boxes
+      const sx = clamp(t.x + 18, s.x + inS, s.x + s.w - inS), tx = clamp(sx, t.x + inT, t.x + t.w - inT);
       const sy = down ? s.y + s.h : s.y, ty = down ? t.y - 1 : t.y + t.h + 1, dy = (ty - sy) / 2;
       d = `M${sx},${sy} C${sx},${sy + dy} ${tx},${ty - dy} ${tx},${ty}`;
     }
@@ -86,6 +100,6 @@ export function layout(plan, labelWidth) {
 
   return {
     width, height, labelWidth, axis: AXIS, xAt, dayStart, dayEnd, order,
-    lanes, steps, ordered, unblocks, rows, ticks, slotMarks, splitX: slots.length ? laterX - GAP / 2 : null, breaks, edges, youMinutes,
+    lanes, steps, ordered, unblocks, rows, ticks, slotMarks, splitX: slots.length ? laterX - GAP / 2 : null, breaks, planBreaks: plan.breaks ?? [], edges, youMinutes,
   };
 }

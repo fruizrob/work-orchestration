@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { OWNER_WORD, dur, minutes, when, whenShort } from './layout.js';
-import { stateLabel } from './status.js';
+import { overlaps, stateLabel } from './status.js';
 
 export default function Board({ model, states, selected, critOn, clock, onSelect, onClear }) {
   const scroller = useRef(null);
   const { width, height, labelWidth, axis, xAt, dayStart, dayEnd } = model;
+
+  const clashes = useMemo(() => overlaps([...model.steps.values()], model.planBreaks), [model]);
 
   const showNow = minutes(clock.time) >= dayStart && minutes(clock.time) <= dayEnd;
 
@@ -69,15 +71,18 @@ export default function Board({ model, states, selected, critOn, clock, onSelect
         {model.ordered.map((s) => {
           const state = states.get(s.id), label = stateLabel(s, state);
           const flagged = state === 'blocked' || state === 'done';
+          const clash = clashes.get(s.id);
+          const note = [clash && 'Overlap', flagged && label].filter(Boolean);
+          const tiny = s.w < 24; // too narrow for text: padding and borders would push it over the next box
           return (
             <button key={s.id} id={`step-${s.id}`} type="button" title={s.title}
-              className={`node ${s.owner} ${state}${s.id === selected ? ' sel' : ''}${dimStep(s.id) ? ' dim' : ''}`}
-              aria-label={`${s.title}. ${label}. ${OWNER_WORD[s.owner]} · ${model.lanes.get(s.lane).name}. ${when(s)}`}
+              className={`node ${s.owner} ${state}${tiny ? ' tiny' : ''}${clash ? ' overlap' : ''}${s.id === selected ? ' sel' : ''}${dimStep(s.id) ? ' dim' : ''}`}
+              aria-label={`${s.title}. ${label}. ${OWNER_WORD[s.owner]} · ${model.lanes.get(s.lane).name}. ${when(s)}.${clash ? ` Overlaps ${clash.join(', ')}.` : ''}`}
               aria-expanded={s.id === selected}
               style={{ left: s.x, top: s.y, width: s.w, height: s.h }}
               onClick={(e) => onSelect(s.id, e.currentTarget)}>
-              <span className="t">{s.title}</span>
-              <span className="w">{s.critical && <b>◆ </b>}{flagged ? `${label} · ${s.on ?? s.start}` : whenShort(s)}</span>
+              {!tiny && <span className="t">{s.title}</span>}
+              {!tiny && <span className="w">{s.critical && <b>◆ </b>}{note.length ? `${note.join(' · ')} · ${s.on ?? s.start}` : whenShort(s)}</span>}
             </button>
           );
         })}
