@@ -1,0 +1,203 @@
+{
+  "date": "2026-01-15",
+  "timezone": "Europe/London",
+  "asOf": "09:05",
+  "day": { "start": "09:00", "end": "17:30" },
+  "later": ["Mon", "Tue–Thu", "Fri", "After"],
+  "breaks": [{ "owner": "you", "start": "12:30", "end": "13:30", "label": "Lunch" }],
+  "lanes": [
+    { "id": "hands-on", "owner": "you", "name": "Hands-on" },
+    { "id": "approvals", "owner": "you", "name": "Approve · ping" },
+    { "id": "ops", "owner": "other", "name": "Ops · partners" },
+    { "id": "reviewers", "owner": "other", "name": "Reviewers" },
+    { "id": "stakeholders", "owner": "other", "name": "Stakeholders" },
+    { "id": "drafts", "owner": "agent", "name": "Drafts" },
+    { "id": "release-build", "owner": "agent", "name": "Release · build" },
+    { "id": "release-checks", "owner": "agent", "name": "Release · checks" },
+    { "id": "pr-agent", "owner": "agent", "name": "PR agent" }
+  ],
+  "steps": [
+    {
+      "id": "reply-stakeholders", "lane": "hands-on", "start": "09:30", "end": "09:45", "priority": "P1",
+      "title": "Send the 3 stakeholder replies",
+      "detail": "Check the agent drafts, adjust the tone, and send each reply in its original thread.",
+      "why": "Messages go out in your name.",
+      "after": ["draft-replies"]
+    },
+    {
+      "id": "post-status-update", "lane": "hands-on", "start": "10:00", "end": "10:15", "priority": "P2",
+      "title": "Review + post weekly status",
+      "detail": "The project update is overdue. Check the agent draft, then post it.",
+      "why": "A status claim to leadership in your name.",
+      "after": ["draft-status-update"]
+    },
+    {
+      "id": "infra-apply", "lane": "hands-on", "start": "10:30", "end": "11:00", "priority": "P1", "critical": true,
+      "title": "Plan → apply the infra change",
+      "detail": "Run the plan for production. It must add one resource and change nothing else; if not, stop. Then apply.",
+      "why": "A production infra change needs your credentials.",
+      "links": [{ "label": "Runbook", "url": "https://example.com/runbook" }]
+    },
+    {
+      "id": "sso-signin", "lane": "hands-on", "start": "13:30", "end": "13:45", "priority": "P1", "critical": true,
+      "title": "VPN + secrets sign-in",
+      "detail": "Open the VPN and a secrets-manager session so the checks agent can read config in each environment.",
+      "why": "Interactive sign-in with your identity."
+    },
+    {
+      "id": "review-pr-b", "lane": "hands-on", "start": "15:00", "end": "15:30", "priority": "P3",
+      "title": "Submit review on PR B",
+      "detail": "Read the agent findings on the rate-limit change. Submit your review.",
+      "why": "A review is your judgment and carries your name.",
+      "after": ["pr-b-findings"],
+      "links": [{ "label": "PR B", "url": "https://example.com/pulls/2" }]
+    },
+    {
+      "id": "ok-pr-a-push", "lane": "hands-on", "start": "15:45", "end": "16:00", "priority": "P3",
+      "title": "OK the PR A push, ask re-review",
+      "detail": "Read the agent’s diff for the requested changes. Approve the push and ask the reviewer to look again.",
+      "why": "Pushing to a reviewed PR and pinging the reviewer.",
+      "after": ["pr-a-changes"]
+    },
+    {
+      "id": "send-followups", "lane": "hands-on", "start": "16:45", "end": "17:00", "priority": "P2",
+      "title": "Send follow-ups",
+      "detail": "Send the prepared follow-ups to each stakeholder who replied.",
+      "why": "Messages go out in your name.",
+      "after": ["prep-followups"]
+    },
+    {
+      "id": "approve-release", "lane": "hands-on", "on": "Fri", "priority": "P1", "critical": true,
+      "title": "Approve release → retire old service",
+      "detail": "After the soak report: switch traffic to the new service, then turn off the old one.",
+      "why": "A production cutover.",
+      "after": ["soak-test"]
+    },
+
+    {
+      "id": "ping-ops", "lane": "approvals", "start": "10:15", "end": "10:20", "priority": "P1", "critical": true,
+      "title": "Ask Ops to approve the deploy job",
+      "detail": "The production deploy job waits for an Ops approval.",
+      "why": "A request to another team in your name."
+    },
+    {
+      "id": "ask-review", "lane": "approvals", "start": "11:35", "end": "11:40", "priority": "P1", "critical": true,
+      "title": "Ask for review on PR C",
+      "detail": "No reviewer is requested yet. Ask a teammate once CI is green.",
+      "why": "Choosing and asking a reviewer.",
+      "after": ["fix-ci"]
+    },
+    {
+      "id": "go-merge", "lane": "approvals", "start": "14:35", "end": "14:40", "priority": "P1", "critical": true,
+      "title": "Go: merge PR C + staging deploy",
+      "detail": "Once review and checks are green, tell the build agent to merge and deploy to staging.",
+      "why": "Merges and deploys need your go-ahead.",
+      "after": ["code-review"]
+    },
+    {
+      "id": "approve-prod-rollout", "lane": "approvals", "on": "Mon", "priority": "P1", "critical": true,
+      "title": "Authorize prod dry-run",
+      "detail": "Confirm infra, config and staging checks are green. The dry-run writes nothing.",
+      "why": "A production deploy.",
+      "after": ["verify-staging", "config-check"]
+    },
+
+    {
+      "id": "ops-approval", "lane": "ops", "start": "10:20", "end": "12:00", "critical": true,
+      "title": "Ops approves the deploy job",
+      "detail": "Ops owns the production approval.",
+      "after": ["ping-ops"]
+    },
+    {
+      "id": "vendor-change", "lane": "ops", "on": "Tue–Thu",
+      "title": "Vendor ships their side",
+      "detail": "The vendor deploys their change. Check one new event afterwards."
+    },
+    {
+      "id": "code-review", "lane": "reviewers", "start": "11:40", "end": "14:30", "critical": true,
+      "title": "Teammate reviews PR C",
+      "detail": "Human review of the release workflow.",
+      "after": ["ask-review"]
+    },
+    {
+      "id": "rereview", "lane": "reviewers", "start": "16:00", "end": "17:00",
+      "title": "Reviewer re-reviews PR A",
+      "detail": "Clears “changes requested” so PR A can merge.",
+      "after": ["ok-pr-a-push"]
+    },
+    {
+      "id": "replies-back", "lane": "stakeholders", "start": "09:45", "end": "16:00",
+      "title": "Stakeholders reply",
+      "detail": "Some are out today. Expect the rest of the replies tomorrow.",
+      "after": ["reply-stakeholders"]
+    },
+    {
+      "id": "stakeholders-confirm", "lane": "stakeholders", "on": "After", "critical": true,
+      "title": "Stakeholders confirm results",
+      "detail": "They confirm the new output matches. Rollback: switch traffic back to the old service.",
+      "after": ["approve-release"]
+    },
+
+    {
+      "id": "draft-replies", "lane": "drafts", "start": "09:00", "end": "09:30",
+      "title": "Draft the 3 stakeholder replies",
+      "detail": "Pull the context from each thread and draft one reply per stakeholder. Do not send."
+    },
+    {
+      "id": "draft-status-update", "lane": "drafts", "start": "09:30", "end": "10:00",
+      "title": "Draft weekly status",
+      "detail": "Build it from this week’s merged work. Flag the release date risk."
+    },
+    {
+      "id": "prep-followups", "lane": "drafts", "start": "16:00", "end": "16:30",
+      "title": "Prepare follow-ups",
+      "detail": "List who replied and draft one follow-up each. Do not send.",
+      "after": ["replies-back"]
+    },
+    {
+      "id": "fix-ci", "lane": "release-build", "start": "09:15", "end": "11:30", "critical": true,
+      "title": "Fix CI failure on PR C",
+      "detail": "Read the failed job, make a targeted fix, push, and report the new check result."
+    },
+    {
+      "id": "merge-staging", "lane": "release-build", "start": "14:40", "end": "15:20", "critical": true,
+      "title": "Merge PR C · deploy to staging",
+      "detail": "After your go-ahead: merge, run the staging deploy, and watch it.",
+      "after": ["go-merge", "infra-apply"]
+    },
+    {
+      "id": "verify-staging", "lane": "release-build", "start": "15:20", "end": "16:00", "critical": true,
+      "title": "Verify staging end to end",
+      "detail": "Confirm the scheduled job runs and writes dry-run output in staging.",
+      "after": ["merge-staging"]
+    },
+    {
+      "id": "start-rollout", "lane": "release-build", "on": "Mon", "critical": true,
+      "title": "Start prod dry-run",
+      "detail": "Deploy to production in dry-run mode after your approval. Check the first run’s output.",
+      "after": ["approve-prod-rollout"]
+    },
+    {
+      "id": "config-check", "lane": "release-checks", "start": "13:45", "end": "14:30", "critical": true,
+      "title": "Check secrets + config in each env",
+      "detail": "Confirm each required secret exists in staging and production. Report presence only. Never print values.",
+      "after": ["ops-approval", "sso-signin"]
+    },
+    {
+      "id": "soak-test", "lane": "release-checks", "on": "Tue–Thu", "critical": true,
+      "title": "Compare new vs old output",
+      "detail": "Every old result needs a matching new one. Explain any extras.",
+      "after": ["start-rollout"]
+    },
+    {
+      "id": "pr-a-changes", "lane": "pr-agent", "start": "09:15", "end": "11:00",
+      "title": "PR A: changes, rebase, test",
+      "detail": "Work through the requested changes, rebase, and run the tests. Prepare the diff for your review; do not push."
+    },
+    {
+      "id": "pr-b-findings", "lane": "pr-agent", "start": "11:00", "end": "14:00",
+      "title": "PR B: draft review findings",
+      "detail": "Review limits, failure modes and tests. Draft findings for you."
+    }
+  ]
+}
