@@ -21,7 +21,7 @@ Needs Node `^20.19` or `>=22.12`.
 | `plans/<date>.json` | Your plan: the only file to edit for a new day. Gitignored. |
 | `examples/plan.json` | A generic sample plan. The tests use it. |
 | `validate.mjs` | Rejects a plan that is malformed or cannot be scheduled. |
-| `vite.config.js` | Serves plans as `virtual:plans`, after validation. A bad plan shows as an error overlay in dev and fails the build. |
+| `vite.config.js` | Serves plans as `virtual:plans`, after validation. In dev a bad plan lists its errors on the page and the other plans still load; in a build it fails. |
 | `src/layout.js` | Pure geometry: plan in, box positions and arrows out. |
 | `src/status.js` | Pure status rules: done, ready, blocked, scheduled, and the three answers. |
 | `src/App.jsx` | Page state: plan clock, done marks, selected step, critical-path focus. |
