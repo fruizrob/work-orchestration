@@ -23,8 +23,10 @@ Needs Node `^20.19` or `>=22.12`.
 | `validate.mjs` | Rejects a plan that is malformed or cannot be scheduled. |
 | `vite.config.js` | Serves plans as `virtual:plans`, after validation. A bad plan shows as an error overlay in dev and fails the build. |
 | `src/layout.js` | Pure geometry: plan in, box positions and arrows out. |
-| `src/App.jsx` | Page state: selected step, critical-path focus, done marks, next step. |
-| `src/Board.jsx`, `src/Detail.jsx` | The swimlane board and the step panel. |
+| `src/status.js` | Pure status rules: done, ready, blocked, scheduled, and the three answers. |
+| `src/App.jsx` | Page state: plan clock, done marks, selected step, critical-path focus. |
+| `src/Answers.jsx`, `src/Detail.jsx`, `src/Board.jsx` | The three answer cards, the step panel, and the swimlane board. |
+| `examples/run-plan-concept.html` | Design reference: behavior rules, palette, acceptance cases. Open it in a browser. |
 
 ## Plan format
 
@@ -55,3 +57,12 @@ The validator enforces these rules:
 - There are no dependency cycles.
 
 The view draws an arrow for each `after` entry. An arrow is red when both of its steps are `critical`.
+
+## Status rules
+
+The cards above the timeline answer: your next action, agent work, and who you are waiting on. `src/status.js` defines them:
+
+- **Plan clock.** The live time on the plan's date. On any other date, `asOf`, shown as "Snapshot".
+- **Done.** A completion mark for the step id. Marks for ids no longer in the plan do not count. A passed end time never marks a step done.
+- **Blocked.** The step has started and at least one `after` step is not done.
+- **Ready.** A timed step has started, is not done, and has no open `after` steps. Each card shows its owner's earliest ready step, then the earliest blocked one, then the next scheduled one. Equal start times keep plan order.
