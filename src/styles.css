@@ -42,8 +42,8 @@ a:hover{text-decoration-color:currentColor}
 .board{position:relative}
 .row{position:absolute;left:0;right:0;border-bottom:1px solid var(--line)}
 .row.section{background:var(--band)}
-.label{position:sticky;left:0;z-index:6;width:var(--label);height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;
-  background:var(--surface);border-right:1px solid var(--line);font-size:12.5px;font-weight:500}
+.label{position:sticky;left:0;z-index:6;width:var(--label);height:calc(100% + 1px);display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12.5px;font-weight:500}
 .row.section .label{background:var(--band);font-size:12px;font-weight:600}
 .row.section .label small{font-weight:400;color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
