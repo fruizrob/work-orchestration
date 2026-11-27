@@ -1,0 +1,8 @@
+# Real day plans and their built pages hold work details. Keep them local.
+plans/*.json
+out/
+
+.env
+.env.*
+node_modules/
+.DS_Store
