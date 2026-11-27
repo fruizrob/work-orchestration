@@ -74,6 +74,7 @@ svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visib
 .node.overlap .w{color:var(--other)}
 .node.done{opacity:.45} .node.done .t{text-decoration:line-through}
 .node.sel{box-shadow:0 0 0 2px var(--c)}
+.node.tiny{padding:0;border:0;border-radius:1px;background:var(--c)}
 .board.focus .dim{opacity:.12}
 
 .detail{max-width:760px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px}

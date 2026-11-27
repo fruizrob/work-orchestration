@@ -70,7 +70,7 @@ const day = [
   { id: 'd', owner: 'agent', title: 'Agent run', start: '12:00', end: '14:00' },
   { id: 'e', owner: 'other', title: 'Their reply', start: '12:00', end: '14:00' },
   { id: 'f', owner: 'you', title: 'Later review', on: 'Mon' },
-  { id: 'g', owner: 'you', title: 'Sync', start: '14:00', end: '14:30' },
+  { id: 'g', owner: 'you', title: 'Sync', start: '13:30', end: '14:00' },
 ];
 const lunch = { owner: 'you', start: '12:30', end: '13:30', label: 'Lunch' };
 

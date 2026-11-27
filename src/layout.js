@@ -87,7 +87,8 @@ export function layout(plan, labelWidth) {
       d = `M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}`;
     } else {
       const down = t.y > s.y;
-      const sx = clamp(t.x + 18, s.x + 12, s.x + s.w - 12), tx = clamp(sx, t.x + 12, t.x + t.w - 12);
+      const inS = Math.min(12, s.w / 2), inT = Math.min(12, t.w / 2); // stay inside narrow boxes
+      const sx = clamp(t.x + 18, s.x + inS, s.x + s.w - inS), tx = clamp(sx, t.x + inT, t.x + t.w - inT);
       const sy = down ? s.y + s.h : s.y, ty = down ? t.y - 1 : t.y + t.h + 1, dy = (ty - sy) / 2;
       d = `M${sx},${sy} C${sx},${sy + dy} ${tx},${ty - dy} ${tx},${ty}`;
     }

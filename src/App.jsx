@@ -9,8 +9,12 @@ import Detail from './Detail.jsx';
 export default function App() {
   const [name, setName] = useState((plans.find((p) => p.plan) ?? plans[0]).name);
   const entry = plans.find((p) => p.name === name) ?? plans[0];
+  // Switching plans remounts the page, picker included; put keyboard focus back on the picker.
+  const refocus = useRef(false);
   const picker = plans.length > 1 && (
-    <select className="btn" aria-label="Plan" value={entry.name} onChange={(e) => setName(e.target.value)}>
+    <select className="btn" aria-label="Plan" value={entry.name}
+      ref={(el) => { if (el && refocus.current) { refocus.current = false; el.focus(); } }}
+      onChange={(e) => { refocus.current = true; setName(e.target.value); }}>
       {plans.map((p) => <option key={p.name} value={p.name}>{p.plan ? p.name : `${p.name} · invalid`}</option>)}
     </select>
   );
@@ -123,7 +127,11 @@ function useLabelWidth() {
 // legacyKey: marks were once keyed by plan date; read them once when the new key is empty.
 function useDone(key, legacyKey) {
   const [done, setDone] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(key) ?? localStorage.getItem(legacyKey) ?? '[]')); } catch { return new Set(); }
+    try {
+      const saved = localStorage.getItem(key) ?? localStorage.getItem(legacyKey);
+      if (saved !== null) localStorage.setItem(key, saved); // migrate once, so a later date edit keeps the marks
+      return new Set(JSON.parse(saved ?? '[]'));
+    } catch { return new Set(); }
   });
   const toggle = (id) => setDone((prev) => {
     const next = new Set(prev);

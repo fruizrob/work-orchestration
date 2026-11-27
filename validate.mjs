@@ -17,7 +17,8 @@ export function validate(plan) {
   const stepList = Array.isArray(plan.steps) ? plan.steps : [];
   const slots = Array.isArray(plan.later) ? plan.later : [];
   for (const [i, slot] of slots.entries()) {
-    if (slots.indexOf(slot) !== i) err(`later: duplicate slot "${slot}"`);
+    if (typeof slot !== 'string' || !slot) err(`later: slot ${i + 1} must be a non-empty label`);
+    else if (slots.indexOf(slot) !== i) err(`later: duplicate slot "${slot}"`);
   }
   const afterOf = (s) => (Array.isArray(s.after) ? s.after : []);
 
@@ -35,7 +36,7 @@ export function validate(plan) {
     if (!OWNERS.includes(b.owner)) err(`break "${b.label}": owner must be one of ${OWNERS.join(', ')}`);
     if (!TIME.test(b.start ?? '') || !TIME.test(b.end ?? '') || !inDay(b.start) || !inDay(b.end)) {
       err(`break "${b.label}": start and end must be HH:MM inside the day`);
-    }
+    } else if (minutes(b.start) >= minutes(b.end)) err(`break "${b.label}": start must be before end`);
   }
 
   const lanes = new Map();
@@ -87,6 +88,7 @@ export function validate(plan) {
   // A step starts only after everything in its `after` list is finished.
   for (const s of steps.values()) {
     for (const depId of afterOf(s)) {
+      if (typeof depId !== 'string') continue; // reported above as a shape error
       const dep = steps.get(depId);
       const at = `step "${s.id}" after "${depId}"`;
       if (!dep) { err(`${at}: unknown step`); continue; }
@@ -103,7 +105,7 @@ export function validate(plan) {
     if (state.get(id) === 'done' || !steps.has(id)) return;
     if (state.get(id) === 'open') { err(`dependency cycle: ${[...path, id].join(' → ')}`); return; }
     state.set(id, 'open');
-    for (const dep of afterOf(steps.get(id))) if (dep !== id) visit(dep, [...path, id]);
+    for (const dep of afterOf(steps.get(id))) if (typeof dep === 'string' && dep !== id) visit(dep, [...path, id]);
     state.set(id, 'done');
   };
   for (const id of steps.keys()) visit(id, []);

@@ -67,4 +67,14 @@ test('later must be an array of unique slots', () => {
   assert.match(validate(plan).join('\n'), /later: must be an array/);
   plan.later = ['Mon', 'Mon'];
   assert.match(validate(plan).join('\n'), /later: duplicate slot "Mon"/);
+  plan.later = ['Mon', ''];
+  assert.match(validate(plan).join('\n'), /later: slot 2 must be a non-empty label/);
+  plan.later = [{}];
+  assert.match(validate(plan).join('\n'), /later: slot 1 must be a non-empty label/);
+});
+
+test('a break must start before it ends', () => {
+  const plan = load();
+  plan.breaks = [{ owner: 'you', start: '12:30', end: '12:30', label: 'Lunch' }];
+  assert.match(validate(plan).join('\n'), /break "Lunch": start must be before end/);
 });
