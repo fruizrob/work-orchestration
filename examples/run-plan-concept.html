@@ -191,6 +191,7 @@
         <ul>
           <li><strong>Plan clock.</strong> For the current plan date, use the live clock in <code>plan.timezone</code>. For another date, use <code>plan.asOf</code> and label the view “Snapshot”. Compare times within the plan date.</li>
           <li><strong>Done.</strong> The existing completion mark for a step ID is authoritative. Recalculate the summaries after each mark or undo. Count only IDs present in the loaded plan.</li>
+          <li><strong>Overlap.</strong> A warning, not a plan error. A timed <code>you</code> step that intersects another timed <code>you</code> step or a <code>you</code> break is marked “Overlap”. Touching ranges do not count.</li>
           <li><strong>Blocked.</strong> At least one step in <code>after</code> lacks a completion mark. Show the open prerequisites by title and lane. A planned end time passing never clears a prerequisite.</li>
           <li><strong>Scheduled.</strong> A step timed later in the plan day is upcoming. A step with <code>on</code> belongs under Later. If an upcoming step has an open prerequisite, show that status in its detail.</li>
           <li><strong>Ready.</strong> A timed <code>you</code> or <code>agent</code> step has reached its planned start, has no open prerequisites, and is unfinished. Choose the earliest planned start per owner. Break ties with the order in <code>plan.steps</code>. A ready agent task is eligible for a handoff.</li>

@@ -40,5 +40,21 @@ export function summarize(steps, owner, time, done) {
   return { state: 'empty' };
 }
 
+// Double-booking in your own day: step id -> titles of the things it overlaps. A warning, not a plan error.
+// Looks at your timed steps and your breaks. Touching ranges (end == start) do not overlap.
+export function overlaps(steps, breaks) {
+  const mine = steps.filter((s) => s.owner === 'you' && s.start);
+  const items = [...mine.map((s) => ({ id: s.id, name: s.title, start: s.start, end: s.end })),
+    ...breaks.filter((b) => b.owner === 'you').map((b) => ({ name: b.label ?? 'Break', start: b.start, end: b.end }))];
+  const clash = (a, b) => minutes(a.start) < minutes(b.end) && minutes(b.start) < minutes(a.end);
+  const found = new Map();
+  for (const a of items) {
+    if (!a.id) continue;
+    const names = items.filter((b) => b !== a && clash(a, b)).map((b) => b.name);
+    if (names.length) found.set(a.id, names);
+  }
+  return found;
+}
+
 // Done marks can outlive a plan edit; count only ids the plan still has.
 export const doneCount = (steps, done) => steps.filter((s) => done.has(s.id)).length;

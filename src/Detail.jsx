@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { OWNER_WORD, when } from './layout.js';
-import { stateLabel } from './status.js';
+import { overlaps, stateLabel } from './status.js';
 
 export default function Detail({ model, step, states, onToggleDone, onOpen, onClose }) {
   // Move focus to the title whenever a different step opens, so keyboard and screen-reader users land here.
@@ -10,6 +10,7 @@ export default function Detail({ model, step, states, onToggleDone, onOpen, onCl
   const needs = step.after;
   const opens = model.unblocks.get(step.id) ?? [];
   const state = states.get(step.id);
+  const clash = overlaps([...model.steps.values()], model.planBreaks).get(step.id);
   const stepList = (ids, withState) => (
     <ul>
       {ids.map((id) => {
@@ -39,6 +40,7 @@ export default function Detail({ model, step, states, onToggleDone, onOpen, onCl
         {step.priority && <span>{step.priority}</span>}
         {step.critical && <span className="crittag">◆ Critical path</span>}
       </p>
+      {clash && <p className="clash">Overlaps: {clash.join(', ')}</p>}
       {step.detail && <p>{step.detail}</p>}
       {step.why && <div><h3>Why you</h3><p>{step.why}</p></div>}
       {(needs.length > 0 || opens.length > 0) && (

@@ -99,6 +99,6 @@ export function layout(plan, labelWidth) {
 
   return {
     width, height, labelWidth, axis: AXIS, xAt, dayStart, dayEnd, order,
-    lanes, steps, ordered, unblocks, rows, ticks, slotMarks, splitX: slots.length ? laterX - GAP / 2 : null, breaks, edges, youMinutes,
+    lanes, steps, ordered, unblocks, rows, ticks, slotMarks, splitX: slots.length ? laterX - GAP / 2 : null, breaks, planBreaks: plan.breaks ?? [], edges, youMinutes,
   };
 }
