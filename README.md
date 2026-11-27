@@ -50,6 +50,7 @@ Needs Node `^20.19` or `>=22.12`.
 
 The validator enforces these rules:
 
+- The plan is an object. `lanes` and `steps` are arrays. `after` is an array of step ids. `later` is an array of unique slot labels.
 - Ids are unique. Each step names a real lane. Each `after` names a real step.
 - A step has either `start` + `end` inside the day, or `on` set to one of the `later` slots.
 - Steps in one lane do not overlap.

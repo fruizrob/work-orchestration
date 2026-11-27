@@ -9,6 +9,18 @@ export function validate(plan) {
   const errors = [];
   const err = (msg) => errors.push(msg);
 
+  if (typeof plan !== 'object' || plan === null || Array.isArray(plan)) return ['plan: must be a JSON object'];
+  if (!Array.isArray(plan.lanes)) err('lanes: must be an array');
+  if (!Array.isArray(plan.steps)) err('steps: must be an array');
+  if (plan.later !== undefined && !Array.isArray(plan.later)) err('later: must be an array of slot labels');
+  const laneList = Array.isArray(plan.lanes) ? plan.lanes : [];
+  const stepList = Array.isArray(plan.steps) ? plan.steps : [];
+  const slots = Array.isArray(plan.later) ? plan.later : [];
+  for (const [i, slot] of slots.entries()) {
+    if (slots.indexOf(slot) !== i) err(`later: duplicate slot "${slot}"`);
+  }
+  const afterOf = (s) => (Array.isArray(s.after) ? s.after : []);
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.date ?? '')) err('date: use YYYY-MM-DD');
   if (!plan.timezone) err('timezone: required, an IANA name such as "Europe/London"');
   if (!TIME.test(plan.asOf ?? '')) err('asOf: use HH:MM');
@@ -18,7 +30,6 @@ export function validate(plan) {
     return errors; // every time check below depends on the day window
   }
   const inDay = (t) => minutes(t) >= minutes(day.start) && minutes(t) <= minutes(day.end);
-  const slots = plan.later ?? [];
 
   for (const b of plan.breaks ?? []) {
     if (!OWNERS.includes(b.owner)) err(`break "${b.label}": owner must be one of ${OWNERS.join(', ')}`);
@@ -28,7 +39,7 @@ export function validate(plan) {
   }
 
   const lanes = new Map();
-  for (const lane of plan.lanes ?? []) {
+  for (const lane of laneList) {
     if (lanes.has(lane.id)) err(`lane "${lane.id}": duplicate id`);
     if (!OWNERS.includes(lane.owner)) err(`lane "${lane.id}": owner must be one of ${OWNERS.join(', ')}`);
     if (!lane.name) err(`lane "${lane.id}": name is required`);
@@ -36,12 +47,15 @@ export function validate(plan) {
   }
 
   const steps = new Map();
-  for (const s of plan.steps ?? []) {
+  for (const s of stepList) {
     const at = `step "${s.id}"`;
     if (!s.id) { err('step without id'); continue; }
     if (steps.has(s.id)) err(`${at}: duplicate id`);
     steps.set(s.id, s);
     if (!lanes.has(s.lane)) err(`${at}: unknown lane "${s.lane}"`);
+    if (s.after !== undefined && !(Array.isArray(s.after) && s.after.every((id) => typeof id === 'string'))) {
+      err(`${at}: after must be an array of step ids`);
+    }
     if (!s.title) err(`${at}: title is required`);
     const today = s.start !== undefined || s.end !== undefined;
     if (today === (s.on !== undefined)) {
@@ -72,7 +86,7 @@ export function validate(plan) {
 
   // A step starts only after everything in its `after` list is finished.
   for (const s of steps.values()) {
-    for (const depId of s.after ?? []) {
+    for (const depId of afterOf(s)) {
       const dep = steps.get(depId);
       const at = `step "${s.id}" after "${depId}"`;
       if (!dep) { err(`${at}: unknown step`); continue; }
@@ -89,7 +103,7 @@ export function validate(plan) {
     if (state.get(id) === 'done' || !steps.has(id)) return;
     if (state.get(id) === 'open') { err(`dependency cycle: ${[...path, id].join(' → ')}`); return; }
     state.set(id, 'open');
-    for (const dep of steps.get(id).after ?? []) if (dep !== id) visit(dep, [...path, id]);
+    for (const dep of afterOf(steps.get(id))) if (dep !== id) visit(dep, [...path, id]);
     state.set(id, 'done');
   };
   for (const id of steps.keys()) visit(id, []);
