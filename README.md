@@ -67,3 +67,4 @@ The cards above the timeline answer: your next action, agent work, and who you a
 - **Done.** A completion mark for the step id. Marks for ids no longer in the plan do not count. A passed end time never marks a step done.
 - **Blocked.** The step has started and at least one `after` step is not done.
 - **Ready.** A timed step has started, is not done, and has no open `after` steps. Each card shows its owner's earliest ready step, then the earliest blocked one, then the next scheduled one. Equal start times keep plan order.
+- **Overlap.** A warning, not a plan error. A timed `you` step overlaps another timed `you` step, or a `you` break, when their time ranges intersect. Touching ranges (end equals start) do not. The board and the step panel name what it overlaps.

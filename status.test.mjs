@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { doneCount, planClock, stepState, summarize } from './src/status.js';
+import { doneCount, overlaps, planClock, stepState, summarize } from './src/status.js';
 
 // The concept handoff's example day: a merge that waits on a late release approval.
 const steps = [
@@ -61,4 +61,39 @@ test('plan clock: live on the plan date, else the asOf snapshot', () => {
 
 test('done count ignores marks for steps the plan no longer has', () => {
   assert.equal(doneCount(steps, new Set(['reply', 'removed-step'])), 1);
+});
+
+const day = [
+  { id: 'a', owner: 'you', title: 'Review the PR', start: '12:00', end: '12:45' },
+  { id: 'b', owner: 'you', title: 'Quick ping', start: '12:30', end: '12:40' },
+  { id: 'c', owner: 'you', title: 'Next task', start: '12:45', end: '13:00' },
+  { id: 'd', owner: 'agent', title: 'Agent run', start: '12:00', end: '14:00' },
+  { id: 'e', owner: 'other', title: 'Their reply', start: '12:00', end: '14:00' },
+  { id: 'f', owner: 'you', title: 'Later review', on: 'Mon' },
+  { id: 'g', owner: 'you', title: 'Sync', start: '14:00', end: '14:30' },
+];
+const lunch = { owner: 'you', start: '12:30', end: '13:30', label: 'Lunch' };
+
+test('overlap: a clash between two of your steps is flagged on both', () => {
+  const found = overlaps(day, []);
+  assert.deepEqual(found.get('a'), ['Quick ping']);
+  assert.deepEqual(found.get('b'), ['Review the PR']);
+});
+
+test('overlap: touching ranges are not an overlap', () => {
+  assert.equal(overlaps(day, []).has('c'), false);
+  assert.equal(overlaps(day, [lunch]).has('g'), false);
+});
+
+test('overlap: a step inside your lunch is flagged, and lunch is named', () => {
+  const found = overlaps(day, [lunch]);
+  assert.deepEqual(found.get('b'), ['Review the PR', 'Lunch']);
+  assert.deepEqual(found.get('c'), ['Lunch']);
+  assert.equal(overlaps(day, [{ ...lunch, owner: 'other' }]).has('c'), false);
+});
+
+test('overlap: agent, other and later steps are ignored', () => {
+  const found = overlaps(day, [lunch]);
+  for (const id of ['d', 'e', 'f']) assert.equal(found.has(id), false);
+  assert.equal(found.get('a').includes('Agent run'), false);
 });

@@ -71,6 +71,7 @@ svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visib
 .node .w b{color:var(--crit);font-weight:400}
 .node.blocked{--c:var(--other);--tint:var(--other-bg)}
 .node.blocked .w{color:var(--other)}
+.node.overlap .w{color:var(--other)}
 .node.done{opacity:.45} .node.done .t{text-decoration:line-through}
 .node.sel{box-shadow:0 0 0 2px var(--c)}
 .board.focus .dim{opacity:.12}
@@ -86,6 +87,7 @@ svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visib
 .detail .meta{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;color:var(--muted)}
 .pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;color:var(--c);background:var(--tint)}
 .crittag{color:var(--crit)}
+.detail .clash{color:var(--other);font-size:12.5px}
 .deps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .deps ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:2px}
 .deps button{background:none;border:0;padding:2px 0;cursor:pointer;text-align:left;font-size:13px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:.2em}
