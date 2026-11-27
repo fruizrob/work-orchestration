@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{
+  --bg:#f7f7f8; --surface:#fff; --band:#f1f2f4; --ink:#1b1b1f; --muted:#6b6f76; --line:#e4e5e9;
+  --you:#d4500f; --agent:#0d7d70; --other:#6e56cf; --crit:#d93036; --now:#3e63dd;
+  --sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101113; --surface:#18191b; --band:#1d1e21; --ink:#eeeef0; --muted:#9a9ca3; --line:#2b2d31;
+  --you:#ff8b3e; --agent:#3dd6c0; --other:#a493ff; --crit:#ff6369; --now:#7b9cff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101113; --surface:#18191b; --band:#1d1e21; --ink:#eeeef0; --muted:#9a9ca3; --line:#2b2d31;
+  --you:#ff8b3e; --agent:#3dd6c0; --other:#a493ff; --crit:#ff6369; --now:#7b9cff; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);padding:20px 16px 40px}
+h1,h2,h3,p,ul{margin:0}
+button{font:inherit;color:inherit}
+button:focus-visible,.scroller:focus-visible,a:focus-visible{outline:2px solid var(--now);outline-offset:2px}
+a{color:inherit;text-decoration-color:var(--muted);text-underline-offset:.2em}
+a:hover{text-decoration-color:currentColor}
+.page{max-width:1680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
+.bar h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.bar .meta{color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:5px 12px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:500;max-width:100%}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.primary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn[aria-pressed="true"]{border-color:var(--crit);color:var(--crit)}
+.btn .swatch{width:14px;border-top:2px solid var(--crit)}
+
+.scroller{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.board{position:relative}
+.row{position:absolute;left:0;right:0;border-bottom:1px solid var(--line)}
+.row.section{background:var(--band)}
+.label{position:sticky;left:0;z-index:6;width:var(--label);height:100%;display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:var(--surface);border-right:1px solid var(--line);font-size:12.5px;font-weight:500}
+.row.section .label{background:var(--band);font-size:12px;font-weight:600}
+.row.section .label small{font-weight:400;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--line)}
+.tick.half{opacity:.45}
+.tick.split{border-left:1px dashed var(--muted);opacity:.6}
+.tlabel{position:absolute;top:8px;font:11px var(--mono);color:var(--muted);transform:translateX(4px);white-space:nowrap}
+.break{position:absolute;z-index:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);
+  background:repeating-linear-gradient(135deg,var(--band) 0 4px,transparent 4px 9px)}
+.nowline{position:absolute;top:0;bottom:0;z-index:4;border-left:2px solid var(--now);pointer-events:none}
+.nowline span{position:absolute;top:6px;left:4px;font:600 10.5px var(--mono);color:var(--now);background:var(--surface);padding:0 3px;border-radius:3px}
+
+svg.edges{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:visible}
+.edge{fill:none;stroke:var(--muted);stroke-width:1.4;opacity:.6;transition:opacity .15s}
+.edge.crit{stroke:var(--crit);stroke-width:2;opacity:.85}
+
+.you{--c:var(--you)} .agent{--c:var(--agent)} .other{--c:var(--other)}
+.node{position:absolute;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:1px;padding:4px 8px;overflow:hidden;
+  text-align:left;cursor:pointer;border:1px solid var(--line);border-left:3px solid var(--c);border-radius:6px;
+  background:color-mix(in srgb,var(--c) 7%,var(--surface));transition:opacity .15s,box-shadow .15s}
+.node.other{border-style:dashed;border-left-style:solid}
+.node:hover{box-shadow:0 1px 6px color-mix(in srgb,var(--ink) 14%,transparent)}
+.node .t{font-size:12px;font-weight:550;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node .w{font:10.5px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node .w b{color:var(--crit);font-weight:400}
+.node.done{opacity:.45} .node.done .t{text-decoration:line-through}
+.node.sel{box-shadow:0 0 0 2px var(--c)}
+.board.focus .dim{opacity:.12}
+
+.detail{max-width:760px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.detail .eyebrow{font-size:12px;font-weight:600;color:var(--you)}
+.detail h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.detail h3{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:2px}
+.detail .meta{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12.5px;color:var(--muted)}
+.pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent)}
+.crittag{color:var(--crit)}
+.deps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.deps ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:2px}
+.deps button{background:none;border:0;padding:2px 0;cursor:pointer;text-align:left;font-size:13px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:.2em}
+.deps button:hover{text-decoration-color:currentColor}
+.links{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px}
+.detail .btn{align-self:flex-start}
+@media (max-width:560px){.deps{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.node,.edge{transition:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="bar">
+    <div>
+      <h1>Run Plan</h1>
+      <p class="meta" id="meta"></p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="next" hidden></button>
+      <button type="button" class="btn" id="crit" aria-pressed="false"><i class="swatch"></i>Critical path</button>
+    </div>
+  </header>
+  <div class="scroller" id="scroller" role="region" aria-label="Timeline" tabindex="0"><div class="board" id="board"></div></div>
+  <section class="detail" id="detail" aria-live="polite"></section>
+</div>
+
+<script>
+// Built by build.mjs, which replaces the next line with the plan JSON. Schema: README.md.
+const PLAN = /*PLAN*/null;
+
+const GROUPS = [['you', 'You'], ['other', 'Others'], ['agent', 'Agents']];
+const OWNER_WORD = { you: 'You', other: 'Waiting on', agent: 'Agent' };
+const PX = 3, LABEL = innerWidth < 600 ? 112 : 156, PAD = 12, GAP = 36, SLOT = 132, AXIS = 30, SECTION = 28, LANE = 60, NODE_H = 44, MIN_W = 84;
+
+const $ = (id) => document.getElementById(id);
+function h(tag, props = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') Object.assign(el.style, v);
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v);
+  }
+  el.append(...kids.flat().filter((k) => k != null && k !== false));
+  return el;
+}
+const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`);
+
+if (!PLAN) {
+  document.body.textContent = 'No plan inlined. Build this page with: node build.mjs plans/<date>.json';
+  throw new Error('PLAN missing');
+}
+
+// ---------- model
+const dayStart = minutes(PLAN.day.start), dayEnd = minutes(PLAN.day.end);
+const slots = PLAN.later ?? [];
+const xAt = (t) => LABEL + PAD + (minutes(t) - dayStart) * PX;
+const laterX = xAt(PLAN.day.end) + GAP;
+const W = slots.length ? laterX + slots.length * SLOT + 12 : xAt(PLAN.day.end) + 24;
+
+const lanes = new Map(PLAN.lanes.map((l) => [l.id, l]));
+const steps = new Map(PLAN.steps.map((s) => [s.id, { ...s, owner: lanes.get(s.lane).owner, after: s.after ?? [] }]));
+const unblocks = new Map();
+for (const s of steps.values()) for (const d of s.after) unblocks.set(d, [...(unblocks.get(d) ?? []), s.id]);
+const when = (s) => (s.on ? s.on : `${s.start}–${s.end} · ${dur(minutes(s.end) - minutes(s.start))}`);
+const whenShort = (s) => (s.on ? s.on : `${s.start} · ${dur(minutes(s.end) - minutes(s.start))}`);
+const order = (s) => (s.on ? 10000 + slots.indexOf(s.on) : minutes(s.start));
+
+// ---------- layout: rows top to bottom
+const rows = [];
+let y = AXIS;
+for (const [owner, name] of GROUPS) {
+  const groupLanes = PLAN.lanes.filter((l) => l.owner === owner);
+  if (!groupLanes.length) continue;
+  rows.push({ kind: 'section', owner, name, y, h: SECTION }); y += SECTION;
+  for (const lane of groupLanes) { rows.push({ kind: 'lane', owner, lane, y, h: LANE }); lane.y = y; y += LANE; }
+}
+const H = y;
+
+for (const lane of PLAN.lanes) {
+  const inLane = [...steps.values()].filter((s) => s.lane === lane.id);
+  const timed = inLane.filter((s) => !s.on).sort((a, b) => order(a) - order(b));
+  timed.forEach((s, i) => {
+    s.x = xAt(s.start);
+    s.w = Math.max((minutes(s.end) - minutes(s.start)) * PX - 4, MIN_W);
+    if (timed[i + 1]) s.w = Math.min(s.w, xAt(timed[i + 1].start) - s.x - 4); // never cover the next step
+  });
+  inLane.filter((s) => s.on).forEach((s) => { s.x = laterX + slots.indexOf(s.on) * SLOT + 4; s.w = SLOT - 8; });
+  inLane.forEach((s) => { s.h = NODE_H; s.y = lane.y + (LANE - NODE_H) / 2; });
+}
+
+// ---------- persisted "done" marks (this browser only)
+const KEY = `run-plan:${PLAN.date}`;
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch {}
+const saveDone = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch {} };
+
+// ---------- render board
+const board = $('board');
+Object.assign(board.style, { width: `${W}px`, height: `${H}px` });
+board.style.setProperty('--label', `${LABEL}px`);
+
+const youMinutes = [...steps.values()].filter((s) => s.owner === 'you' && !s.on)
+  .reduce((sum, s) => sum + minutes(s.end) - minutes(s.start), 0);
+board.append(h('div', { class: 'row', style: { top: '0px', height: `${AXIS}px` } }, h('div', { class: 'label' })));
+for (const r of rows) {
+  const label = r.kind === 'section'
+    ? h('div', { class: `label ${r.owner}` }, h('i', { class: 'dot' }), r.name,
+        r.owner === 'you' && youMinutes ? h('small', {}, `${dur(youMinutes)} today`) : null)
+    : h('div', { class: 'label' }, r.lane.name);
+  board.append(h('div', { class: `row ${r.kind}`, style: { top: `${r.y}px`, height: `${r.h}px` } }, label));
+}
+
+for (let t = dayStart; t <= dayEnd; t += 30) {
+  const hhmm = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  const x = xAt(hhmm);
+  board.append(h('div', { class: `tick${t % 60 ? ' half' : ''}`, style: { left: `${x}px`, top: `${AXIS}px` } }));
+  if (t % 60 === 0) board.append(h('div', { class: 'tlabel', style: { left: `${x}px` } }, hhmm.replace(/^0/, '')));
+}
+if (slots.length) {
+  board.append(h('div', { class: 'tick split', style: { left: `${laterX - GAP / 2}px` } }));
+  slots.forEach((label, i) => {
+    const x = laterX + i * SLOT;
+    board.append(h('div', { class: 'tick half', style: { left: `${x}px`, top: `${AXIS}px` } }));
+    board.append(h('div', { class: 'tlabel', style: { left: `${x}px` } }, label));
+  });
+}
+
+for (const b of PLAN.breaks ?? []) {
+  const groupRows = rows.filter((r) => r.kind === 'lane' && r.owner === b.owner);
+  if (!groupRows.length) continue;
+  const top = groupRows[0].y + 4, bottom = groupRows.at(-1).y + LANE - 4;
+  board.append(h('div', { class: 'break', style: {
+    left: `${xAt(b.start) + 2}px`, width: `${(minutes(b.end) - minutes(b.start)) * PX - 4}px`, top: `${top}px`, height: `${bottom - top}px`,
+  } }, b.label));
+}
+
+try {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: PLAN.timezone, year: 'numeric', month: '2-digit',
+    day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((p) => [p.type, p.value]));
+  const now = `${parts.hour}:${parts.minute}`;
+  if (`${parts.year}-${parts.month}-${parts.day}` === PLAN.date && minutes(now) >= dayStart && minutes(now) <= dayEnd) {
+    board.append(h('div', { class: 'nowline', style: { left: `${xAt(now)}px` } }, h('span', {}, now)));
+  }
+} catch {}
+
+const NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
+const svg = svgEl('svg', { class: 'edges', width: W, height: H, 'aria-hidden': 'true' });
+const defs = svgEl('defs', {});
+for (const [id, color] of [['arrow', 'var(--muted)'], ['arrow-crit', 'var(--crit)']]) {
+  const m = svgEl('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' });
+  m.append(svgEl('path', { d: 'M0,0 L10,5 L0,10 z', style: `fill:${color}` }));
+  defs.append(m);
+}
+svg.append(defs);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const edges = [];
+for (const t of steps.values()) for (const fromId of t.after) {
+  const s = steps.get(fromId), crit = s.critical && t.critical;
+  let d;
+  if (t.x >= s.x + s.w + 12) { // flows right
+    const sx = s.x + s.w, sy = s.y + s.h / 2, tx = t.x - 1, ty = t.y + t.h / 2, dx = Math.max(22, (tx - sx) / 2);
+    d = `M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}`;
+  } else { // drops straight down or up into another lane
+    const down = t.y > s.y;
+    const sx = clamp(t.x + 18, s.x + 12, s.x + s.w - 12), tx = clamp(sx, t.x + 12, t.x + t.w - 12);
+    const sy = down ? s.y + s.h : s.y, ty = down ? t.y - 1 : t.y + t.h + 1, dy = (ty - sy) / 2;
+    d = `M${sx},${sy} C${sx},${sy + dy} ${tx},${ty - dy} ${tx},${ty}`;
+  }
+  const path = svgEl('path', { d, class: `edge${crit ? ' crit' : ''}`, 'marker-end': `url(#arrow${crit ? '-crit' : ''})` });
+  svg.append(path);
+  edges.push({ from: s.id, to: t.id, el: path, crit });
+}
+board.append(svg);
+
+const nodeEls = new Map();
+for (const lane of PLAN.lanes) {
+  for (const s of [...steps.values()].filter((x) => x.lane === lane.id).sort((a, b) => order(a) - order(b))) {
+    const el = h('button', {
+      type: 'button', class: `node ${s.owner}`, title: s.title, 'aria-label': `${s.title}. ${OWNER_WORD[s.owner]} · ${lane.name}. ${when(s)}`,
+      style: { left: `${s.x}px`, top: `${s.y}px`, width: `${s.w}px`, height: `${s.h}px` },
+      onclick: () => select(selected === s.id ? null : s.id),
+    }, h('span', { class: 't' }, s.title), h('span', { class: 'w' }, s.critical ? h('b', {}, '◆ ') : null, whenShort(s)));
+    board.append(el);
+    nodeEls.set(s.id, el);
+  }
+}
+
+// ---------- state: selection, critical-path focus, next step
+let selected = null, critOn = false;
+
+function nextForYou() {
+  return [...steps.values()].filter((s) => s.owner === 'you' && !done.has(s.id)).sort((a, b) => order(a) - order(b))[0] ?? null;
+}
+function related(id) {
+  const set = new Set([id]);
+  const walk = (cur, map) => { for (const x of map(cur)) if (!set.has(x)) { set.add(x); walk(x, map); } };
+  walk(id, (cur) => steps.get(cur).after);
+  walk(id, (cur) => unblocks.get(cur) ?? []);
+  return set;
+}
+function render() {
+  const focus = selected ? related(selected) : critOn ? new Set([...steps.values()].filter((s) => s.critical).map((s) => s.id)) : null;
+  board.classList.toggle('focus', !!focus);
+  for (const [id, el] of nodeEls) {
+    el.classList.toggle('dim', !!focus && !focus.has(id));
+    el.classList.toggle('sel', id === selected);
+    el.classList.toggle('done', done.has(id));
+  }
+  for (const e of edges) e.el.classList.toggle('dim', !!focus && !(focus.has(e.from) && focus.has(e.to) && (!critOn || e.crit)));
+  $('crit').setAttribute('aria-pressed', String(critOn));
+
+  const next = nextForYou();
+  const nextBtn = $('next');
+  nextBtn.hidden = !next;
+  if (next) nextBtn.replaceChildren(h('span', {}, `Next: ${next.title} · ${next.on ?? next.start}`));
+
+  const date = new Date(`${PLAN.date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  $('meta').textContent = `${date} · as of ${PLAN.asOf} · ${done.size} of ${steps.size} done`;
+
+  renderDetail(selected ? steps.get(selected) : next, !selected);
+}
+
+function renderDetail(s, isNext) {
+  const panel = $('detail');
+  if (!s) { panel.replaceChildren(h('h2', {}, 'Everything on your side is done.')); return; }
+  const lane = lanes.get(s.lane);
+  const stepList = (ids) => h('ul', {}, ids.map((id) => h('li', {}, h('button', { type: 'button', onclick: () => select(id, true) }, steps.get(id).title))));
+  const needs = s.after, opens = unblocks.get(s.id) ?? [];
+  panel.replaceChildren(...[
+    isNext ? h('p', { class: 'eyebrow' }, 'Up next for you') : null,
+    h('h2', {}, s.title),
+    h('p', { class: 'meta' },
+      h('span', { class: `pill ${s.owner}` }, `${OWNER_WORD[s.owner]} · ${lane.name}`),
+      h('span', {}, when(s)),
+      s.priority ? h('span', {}, s.priority) : null,
+      s.critical ? h('span', { class: 'crittag' }, '◆ Critical path') : null),
+    s.detail ? h('p', {}, s.detail) : null,
+    s.why ? h('div', {}, h('h3', {}, 'Why you'), h('p', {}, s.why)) : null,
+    needs.length || opens.length ? h('div', { class: 'deps' },
+      needs.length ? h('div', {}, h('h3', {}, 'Needs'), stepList(needs)) : h('div'),
+      opens.length ? h('div', {}, h('h3', {}, 'Unblocks'), stepList(opens)) : null) : null,
+    s.links?.length ? h('p', { class: 'links' }, s.links.map((l) => h('a', { href: l.url, target: '_blank', rel: 'noopener' }, `${l.label} ↗`))) : null,
+    h('button', { type: 'button', class: `btn${done.has(s.id) ? '' : ' primary'}`, onclick: () => toggleDone(s.id) },
+      done.has(s.id) ? 'Mark not done' : 'Mark done'),
+  ].filter(Boolean));
+}
+
+function select(id, reveal = false) {
+  selected = id;
+  if (id) critOn = false;
+  render();
+  if (id && reveal) nodeEls.get(id).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+function toggleDone(id) {
+  done.has(id) ? done.delete(id) : done.add(id);
+  saveDone();
+  render();
+}
+
+$('next').addEventListener('click', () => select(nextForYou()?.id ?? null, true));
+$('crit').addEventListener('click', () => { critOn = !critOn; selected = null; render(); });
+board.addEventListener('click', (e) => { if (!e.target.closest('.node') && selected) select(null); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (selected || critOn)) { critOn = false; select(null); } });
+
+render();
+const start = nextForYou();
+if (start && !start.on) $('scroller').scrollLeft = Math.max(0, start.x - LABEL - 120);
+</script>
+</body>
+</html>
