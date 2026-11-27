@@ -17,7 +17,7 @@ export default function App() {
   // An invalid plan (dev only) lists its errors; it never reaches layout().
   if (!entry.plan) return <InvalidPlan entry={entry} picker={picker} />;
   // key: a new plan starts with a fresh selection and its own done marks.
-  return <RunPlan key={entry.name} plan={entry.plan} picker={picker} />;
+  return <RunPlan key={entry.name} name={entry.name} plan={entry.plan} picker={picker} />;
 }
 
 function InvalidPlan({ entry, picker }) {
@@ -35,10 +35,10 @@ function InvalidPlan({ entry, picker }) {
   );
 }
 
-function RunPlan({ plan, picker }) {
+function RunPlan({ name, plan, picker }) {
   const labelWidth = useLabelWidth();
   const model = useMemo(() => layout(plan, labelWidth), [plan, labelWidth]);
-  const [done, toggleDone] = useDone(`run-plan:${plan.date}`);
+  const [done, toggleDone] = useDone(`run-plan:${name}`, `run-plan:${plan.date}`);
   const [selected, setSelected] = useState(null);
   const [critOn, setCritOn] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -120,9 +120,10 @@ function useLabelWidth() {
 }
 
 // Done marks live only in this browser. Storage can be blocked, so every access is guarded.
-function useDone(key) {
+// legacyKey: marks were once keyed by plan date; read them once when the new key is empty.
+function useDone(key, legacyKey) {
   const [done, setDone] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
+    try { return new Set(JSON.parse(localStorage.getItem(key) ?? localStorage.getItem(legacyKey) ?? '[]')); } catch { return new Set(); }
   });
   const toggle = (id) => setDone((prev) => {
     const next = new Set(prev);
