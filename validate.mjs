@@ -10,7 +10,7 @@ export function validate(plan) {
   const err = (msg) => errors.push(msg);
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.date ?? '')) err('date: use YYYY-MM-DD');
-  if (!plan.timezone) err('timezone: required, e.g. "America/Santiago"');
+  if (!plan.timezone) err('timezone: required, an IANA name such as "Europe/London"');
   if (!TIME.test(plan.asOf ?? '')) err('asOf: use HH:MM');
   const day = plan.day ?? {};
   if (!TIME.test(day.start ?? '') || !TIME.test(day.end ?? '') || minutes(day.start) >= minutes(day.end)) {
